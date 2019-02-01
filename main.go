@@ -117,18 +117,19 @@ func main() {
 	// Change the scope to calendar.CalendarScope and delete any stored credentials.
 
 	event := &calendar.Event{
-		Summary:     "Testing APi GOOGLE",
-		Location:    "Lomonosov Moscow State University",
-		Description: "Testing API GOOGLE",
+		Summary:     "Name of Subject and Lecturer",
+		Location:    "Lomonosov Moscow State University",//Number of room and direction?
+		Description: "Lecturer's name",
 		Start: &calendar.EventDateTime{
-			DateTime: "2019-01-27T22:22:00+03:00",
+			DateTime: "2019-01-28T22:22:00+03:00",
 			TimeZone: "Europe/Moscow",
 		},
 		End: &calendar.EventDateTime{
-			DateTime: "2019-01-27T23:23:00+03:00",
+			DateTime: "2019-01-28T23:23:00+03:00",
 			TimeZone: "Europe/Moscow",
 		},
-		/*ColorId : Color
+		/*
+			ColorId : Color
 			1 : lavender
 			2 : sage //шалфей
 			3 : grape
@@ -149,7 +150,7 @@ func main() {
 			//by default, empty values are omitted from API requests
 			ForceSendFields: []string{"UseDefault", "Overrides"},
 		},
-		//Recurrence: []string{"RRULE:FREQ=DAILY;COUNT=2"},
+		Recurrence: []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=20190601"},
 		/*Attendees: []*calendar.EventAttendee{
 			&calendar.EventAttendee{Email: "lpage@example.com"},
 			&calendar.EventAttendee{Email: "sbrin@example.com"},
