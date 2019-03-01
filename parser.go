@@ -10,6 +10,17 @@ import (
 	"strings"
 )
 
+type Subject struct {
+	Name   string
+	Lector string
+	Room   string
+}
+
+type Department struct {
+	Number  string
+	Lessons []Subject
+}
+
 var re = regexp.MustCompile(`[a-zA-z]([0-9]+)`)
 
 func main() {
@@ -35,26 +46,43 @@ func main() {
 		}
 	})
 
+	var reGrp = regexp.MustCompile(`4\d+`)
+
 	grpbegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
+	var grpsFound int
 
 	var flag bool
 	groups := make(map[string]string)
+	departments := make([]Department, 0, 5)
 	test := make(map[string]string)
 
+	eachColumn := make(map[int][]string)
+
+	indx := 0
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		//		fmt.Println("TD")
 		if class, ok := std.Attr("class"); ok {
 			test[class] = ""
-
 		}
 
+		if grpsFound > 1 {
+			return
+		}
+		depart := Department{}
 		text := std.Text()
 		if flag && text != grpEnd {
-			groups = parseGroups(text, groups)
+			resFromReg := reGrp.FindAllString(text, -1)
+			eachColumn[indx] = resFromReg
+			indx++
+			for _, val := range resFromReg {
+				depart.Number = val
+				departments = append(departments, depart)
+			}
 			groups[text] = ""
 		}
 		if text == grpbegin {
+			grpsFound++
 			flag = true
 		} else if text == grpEnd {
 			flag = false
@@ -62,15 +90,18 @@ func main() {
 		//		fmt.Println(text)
 	})
 
-	for key, _ := range groups {
+	for _, key := range departments {
 		fmt.Println(key)
+	}
+
+	for key, val := range eachColumn {
+		fmt.Println(key, val)
 	}
 
 	quantity := len(groups)
 	//	fmt.Println(quantity)
 	var binaryColumns = make([]float64, quantity)
-//	var indexSlice = make([]int, quantity)
-	
+
 	var time string
 	var nextStr bool
 
@@ -78,15 +109,24 @@ func main() {
 	tditem := "tditem"
 	tdsmall := "tdsmall"
 	tdtime := "tdtime"
-
+	t := "9:00- - -  10:35"
+	var tmp int
+	
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		//		fmt.Println("TD")
 		text := std.Text()
 
 		if class, ok := std.Attr("class"); ok {
+			if text == t{
+				tmp++
+			}
+			if tmp > 2{
+				return
+			}
+			
 			if strings.Contains(class, tdtime) {
 				if time == text {
-//					fmt.Println(time, binaryColumns)
+					//					fmt.Println(time, binaryColumns)
 					nextStr = false
 					ind = 0
 				} else if time == "" {
@@ -96,7 +136,7 @@ func main() {
 					time = text
 					nextStr = true
 					ind = 0
-//					fmt.Println(time, binaryColumns)
+					//					fmt.Println(time, binaryColumns)
 					for i := 0; i < quantity; i++ {
 						binaryColumns[i] = 0
 					}
@@ -108,7 +148,9 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-//				fmt.Println(class, number, len(binaryColumns), quantity)
+//				depart := parseGroups(text)
+				
+				//				fmt.Println(class, number, len(binaryColumns), quantity)
 				for i := ind; i < ind+number; i++ {
 					binaryColumns[i]++
 				}
@@ -119,37 +161,40 @@ func main() {
 					log.Fatal(err)
 				}
 
-				if number != 0 {
-//					fmt.Println(nextStr)
-					if !nextStr {
-//						for j := 0; j < number; j++{
-//							binaryColumns[indexSlice[j]] += 0.5
-//						}
-//						indexSlice = indexSlice[:number]
-						for j := 0; j < number; j++{
-							for i := 0; i < quantity; i++ {
-								if binaryColumns[i] == 0.5 {
-									binaryColumns[i] += 0.5
-									break
-								}
-							}
-						}
-					} else {
-//					fmt.Println(class, ind, number, len(binaryColumns), quantity)
-						k := 0
-						for i := ind; i < ind+number; i++ {
-//							fmt.Println(k)
-//							indexSlice[k] = i
-							if binaryColumns[i] == 0 {
-								binaryColumns[i] += 0.5
-							}
-							k++
-						}
-						ind = ind + number
-					}
+				if number == 0 {
+					return
 				}
+				//				if number != 0 {
+				//				fmt.Println(nextStr)
+				if !nextStr {
+					//						for j := 0; j < number; j++{
+					//							binaryColumns[indexSlice[j]] += 0.5
+					//						}
+					//						indexSlice = indexSlice[:number]
+					for j := 0; j < number; j++ {
+						for i := 0; i < quantity; i++ {
+							if binaryColumns[i] == 0.5 {
+								binaryColumns[i] += 0.5
+								break
+							}
+						}
+					}
+				} else {
+					//					fmt.Println(class, ind, number, len(binaryColumns), quantity)
+					//						k := 0
+					for i := ind; i < ind+number; i++ {
+						//							fmt.Println(k)
+						//							indexSlice[k] = i
+						if binaryColumns[i] == 0 {
+							binaryColumns[i] += 0.5
+						}
+						//							k++
+					}
+					ind = ind + number
+				}
+				//				}
 			}
-			fmt.Println(time, binaryColumns, class)
+			fmt.Println(time, binaryColumns, class, text)
 		}
 		//		fmt.Println(text)
 	})
@@ -162,6 +207,53 @@ func fromStringToInt(class string) (int, error) {
 	return number, err
 }
 
-func parseGroups(text string, mapka map[string]string) map[string]string {
-	return mapka
+/**/
+var practice = "Преддипломная практика"
+
+func parseGroups(text string, depart Department) Department {
+	subj := Subject{}
+	
+	if text == ""{
+//		subj.Name = ""
+//		subj.Lector = ""
+//		subj.Room = ""
+		depart.Lessons = append(depart.Lessons, subj)
+		
+		return depart
+	}
+	if strings.Contains(text, practice){
+		subj.Name = practice
+		depart.Lessons = append(depart.Lessons, subj)
+		
+		return depart
+	}
+
+	rSubj := regexp.MustCompile(depart.Number + ` - ([^0-9||Каф.]*)`)
+	resSbj := rSubj.FindStringSubmatch(text)
+	Subj := resSbj[1]
+	
+	rRoom := regexp.MustCompile(resSbj[0] + ` ([\d+\-\d+||Каф.]*)`)
+	resRm := rRoom.FindStringSubmatch(text)
+	Room := resRm[1]
+
+	rLect := regexp.MustCompile(resRm[0] + ` (.+)`)
+	Lect := rLect.FindStringSubmatch(text)[1]
+	
+	subj.Name = Subj
+	subj.Lector = Lect
+	subj.Room = Room
+	
+	depart.Lessons = append(depart.Lessons, subj)
+
+	return depart
 }
+/**/
+
+
+
+
+
+
+
+
+
