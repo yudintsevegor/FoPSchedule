@@ -133,15 +133,15 @@ func main() {
 
 			if strings.Contains(class, tdtime) {
 				if time == text {
-					nextStr = false
+					nextStr = true
 					ind = 0
 				} else if time == "" {
 					time = text
-					nextStr = true
+					nextStr = false
 				} else {
 					n++
 					time = text
-					nextStr = true
+					nextStr = false
 					ind = 0
 					for i := 0; i < quantity; i++ {
 						binaryColumns[i] = 0
@@ -157,10 +157,18 @@ func main() {
 				}
 			})
 
+			var numberBeforeSmall0 int
 			if countSmall0 > 0 && class != tdsmall + "0" {
+				number, err := fromStringToInt(class)
+				if err != nil {
+					log.Fatal(err)
+				}
+				numberBeforeSmall0 = number
+			
 				return
 			}
 
+			var fullDay bool
 			var room string
 			std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
 				room = sel.Text()
@@ -172,12 +180,10 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				
 				resFromReg := reGrp.FindAllString(text, -1)
-				fmt.Println(resFromReg, len(resFromReg))
 				if len(resFromReg) == 0{
 					var allGr = make([]string, 0, 1)
 					for i := ind; i < ind + number; i++{
@@ -214,51 +220,137 @@ func main() {
 					binaryColumns[i]++
 				}
 				ind = ind + number
+				
 			} else if strings.Contains(class, tdsmall) {
 				fmt.Println(class)
 				number, err := fromStringToInt(class)
 				if err != nil {
 					log.Fatal(err)
 				}
+				if numberBeforeSmall0 == 0 {
+					numberBeforeSmall0 = number
+					fullDay = false
+				} else {
+					fullDay = true
+				}
 
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
+				resFromReg := reGrp.FindAllString(text, -1)
+				
 				if !nextStr {
-					if countSmall0 > 0{
-						countSmall0--
-						if countSmall0 != 0{
-							return
-						}
-						number = 1
+					for _, dep := range departments{
+								fmt.Println(dep)
 					}
-					
-					for j := 0; j < number; j++ {
-						for i := 0; i < quantity; i++ {
-							if binaryColumns[i] == 0.5 {
-								binaryColumns[i] += 0.5
-								break
+					if len(resFromReg) == 0{
+						var allGr = make([]string, 0, 1)
+						for i := ind; i < ind + numberBeforeSmall0; i++{
+							allGr = append(allGr, eachColumn[i]...)
+						}
+						for _, dep := range departments{
+							for _, gr := range allGr{
+								if dep.Number == gr {
+									newSubj := Subject{}
+									newSubj = subject
+									dep.Lessons[n] = newSubj
+									fmt.Println(dep.Number, dep.Lessons)
+								}
+							}
+						}
+					} else {
+						
+						if reInterval.MatchString(text){
+							interval := reInterval.FindStringSubmatch(text)
+							left, _ := strconv.Atoi(interval[1])
+							right, _ := strconv.Atoi(interval[2])
+							
+							for i := left + 1; i < right; i++{
+								resFromReg = append(resFromReg, strconv.Itoa(i))
+							}
+						}
+
+						for _, dep := range departments{
+							for _, gr := range resFromReg{
+								if dep.Number == gr {
+									newSubj := Subject{}
+									newSubj = subject
+									dep.Lessons[n] = newSubj
+									fmt.Println(dep.Number, dep.Lessons)
+								}
 							}
 						}
 					}
 				} else {
-					if countSmall0 > 0{
-						countSmall0--
-						if countSmall0 != 0{
-							return
-						}
-						number = 1
+					for _, dep := range departments{
+								fmt.Println(dep)
 					}
-					for i := ind; i < ind+number; i++ {
-						if binaryColumns[i] == 0 {
-							binaryColumns[i] += 0.5
+					if len(resFromReg) == 0{
+						var allGr = make([]string, 0, 1)
+						for i := ind; i < ind + numberBeforeSmall0; i++{
+							allGr = append(allGr, eachColumn[i]...)
+						}
+						for _, dep := range departments{
+							for _, gr := range allGr{
+								if dep.Number == gr {
+									fmt.Println(dep.Number, dep.Lessons)
+									fmt.Println("FULLDAY!!! ", fullDay)
+									newSubj := Subject{}
+									if !fullDay{
+										newSubj.Lector = dep.Lessons[n].Lector + "@" + subject.Lector
+										newSubj.Room = dep.Lessons[n].Room + "@" + subject.Room
+										newSubj.Name = dep.Lessons[n].Name + "@" + subject.Name
+										fmt.Println(dep.Number, dep.Lessons, "\n", newSubj)
+										dep.Lessons[n] = newSubj
+										continue
+									}
+									dep.Lessons[n] = subject
+								}
+							}
+						}
+					} else {
+						if reInterval.MatchString(text){
+							interval := reInterval.FindStringSubmatch(text)
+							left, _ := strconv.Atoi(interval[1])
+							right, _ := strconv.Atoi(interval[2])
+							
+							for i := left + 1; i < right; i++{
+								resFromReg = append(resFromReg, strconv.Itoa(i))
+							}
+						}
+
+						for _, dep := range departments{
+							for _, gr := range resFromReg{
+								if dep.Number == gr {
+									fmt.Println(dep.Number, dep.Lessons)
+									fmt.Println("FULLDAY!!! ", fullDay)
+									newSubj := Subject{}
+									if !fullDay{
+										newSubj.Lector = dep.Lessons[n].Lector + "@" + subject.Lector
+										newSubj.Room = dep.Lessons[n].Room + "@" + subject.Room
+										newSubj.Name = dep.Lessons[n].Name + "@" + subject.Name
+										fmt.Println(dep.Number, dep.Lessons, "\n", newSubj)
+										dep.Lessons[n] = newSubj
+										continue
+									}
+									dep.Lessons[n] = subject
+								}
+							}
 						}
 					}
-					ind = ind + number
+				}
+				if countSmall0 > 0{
+					countSmall0--
+					if countSmall0 != 0{
+						return
+					}
+					ind = ind + numberBeforeSmall0
+					numberBeforeSmall0 = 0
 				}
 			}
 			fmt.Println(time, binaryColumns, class, text, "\n")
 		}
 	})
+	
 	for _, val := range departments{
 			fmt.Println(val.Number)
 			fmt.Println(val.Lessons, "\n")
