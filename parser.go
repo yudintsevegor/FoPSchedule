@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type Subject struct {
@@ -52,10 +53,10 @@ func main() {
 	grpEnd := "<< ГРУППЫ"
 	var grpsFound int
 
-	var flag bool
+	var isGroups bool
 	groups := make(map[string]string)
 	departments := make([]Department, 0, 5)
-	test := make(map[string]string)
+	Clss := make(map[string]string)
 
 	eachColumn := make(map[int][]string)
 
@@ -63,7 +64,7 @@ func main() {
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		//		fmt.Println("TD")
 		if class, ok := std.Attr("class"); ok {
-			test[class] = ""
+			Clss[class] = ""
 		}
 
 		if grpsFound > 1 {
@@ -71,7 +72,7 @@ func main() {
 		}
 		depart := Department{}
 		text := std.Text()
-		if flag && text != grpEnd {
+		if isGroups && text != grpEnd {
 			resFromReg := reGrp.FindAllString(text, -1)
 			eachColumn[indx] = resFromReg
 			indx++
@@ -83,9 +84,9 @@ func main() {
 		}
 		if text == grpbegin {
 			grpsFound++
-			flag = true
+			isGroups = true
 		} else if text == grpEnd {
-			flag = false
+			isGroups = false
 		}
 		//		fmt.Println(text)
 	})
@@ -111,19 +112,21 @@ func main() {
 	tdtime := "tdtime"
 	t := "9:00- - -  10:35"
 	var tmp int
-	
+
+	var countSmall0 int
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		//		fmt.Println("TD")
 		text := std.Text()
 
 		if class, ok := std.Attr("class"); ok {
-			if text == t{
+			//			For debugging. To show only Monday.
+			if text == t {
 				tmp++
 			}
-			if tmp > 2{
+			if tmp > 2 {
 				return
 			}
-			
+
 			if strings.Contains(class, tdtime) {
 				if time == text {
 					//					fmt.Println(time, binaryColumns)
@@ -143,27 +146,56 @@ func main() {
 				}
 			}
 
+			std.Find("td").Each(func(i int, sel *goquery.Selection) {
+				if small, ok := sel.Attr("class"); ok {
+					if strings.Contains(small, "tdsmall0") {
+						countSmall0++
+					}
+				}
+			})
+
+			if countSmall0 > 0 {
+				countSmall0 = 0
+				return
+			}
+
+			var room string
+			std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
+				room = sel.Text()
+			})
+
 			if strings.Contains(class, tditem) {
 				number, err := fromStringToInt(class)
 				if err != nil {
 					log.Fatal(err)
 				}
-//				depart := parseGroups(text)
-				
+
+				subject := parseGroups(text, room)
+				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n\n", subject.Name, subject.Room, subject.Lector)
+
 				//				fmt.Println(class, number, len(binaryColumns), quantity)
 				for i := ind; i < ind+number; i++ {
 					binaryColumns[i]++
 				}
 				ind = ind + number
+				//				fmt.Println("-----------------------------------------------------------------------------------")
+				//				rr, _ := std.Html()
+				//				fmt.Println(rr)
 			} else if strings.Contains(class, tdsmall) {
 				number, err := fromStringToInt(class)
 				if err != nil {
 					log.Fatal(err)
 				}
 
-				if number == 0 {
-					return
-				}
+				/*
+					if number == 0 {
+						fmt.Println(class, text)
+						return
+					}
+				*/
+				subject := parseGroups(text, room)
+				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n\n", subject.Name, subject.Room, subject.Lector)
+
 				//				if number != 0 {
 				//				fmt.Println(nextStr)
 				if !nextStr {
@@ -180,8 +212,8 @@ func main() {
 						}
 					}
 				} else {
-					//					fmt.Println(class, ind, number, len(binaryColumns), quantity)
-					//						k := 0
+					//	fmt.Println(class, ind, number, len(binaryColumns), quantity)
+					//k := 0
 					for i := ind; i < ind+number; i++ {
 						//							fmt.Println(k)
 						//							indexSlice[k] = i
@@ -209,51 +241,51 @@ func fromStringToInt(class string) (int, error) {
 
 /**/
 var practice = "Преддипломная практика"
+var war = "ВОЕННАЯ ПОДГОТОВКА"
+var mfk = "МЕЖФАКУЛЬТЕТСКИЕ КУРСЫ"
 
-func parseGroups(text string, depart Department) Department {
+func parseGroups(text, room string) Subject {
 	subj := Subject{}
-	
-	if text == ""{
-//		subj.Name = ""
-//		subj.Lector = ""
-//		subj.Room = ""
-		depart.Lessons = append(depart.Lessons, subj)
-		
-		return depart
+
+	var isSpace bool
+	for _, val := range text {
+		isSpace = unicode.IsSpace(val)
+		break
 	}
-	if strings.Contains(text, practice){
+
+	if isSpace {
+		return subj
+	}
+
+	if strings.Contains(text, practice) {
 		subj.Name = practice
-		depart.Lessons = append(depart.Lessons, subj)
-		
-		return depart
+
+		return subj
 	}
 
-	rSubj := regexp.MustCompile(depart.Number + ` - ([^0-9||Каф.]*)`)
-	resSbj := rSubj.FindStringSubmatch(text)
-	Subj := resSbj[1]
-	
-	rRoom := regexp.MustCompile(resSbj[0] + ` ([\d+\-\d+||Каф.]*)`)
-	resRm := rRoom.FindStringSubmatch(text)
-	Room := resRm[1]
+	if strings.Contains(text, mfk) {
+		subj.Name = mfk
 
-	rLect := regexp.MustCompile(resRm[0] + ` (.+)`)
+		return subj
+	}
+	if strings.Contains(text, war) {
+		subj.Name = war
+
+		return subj
+	}
+
+	//	fmt.Println("TEXT: ", text)
+	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
-	
+
+	rSubj := regexp.MustCompile(`([^0-9\-]*) ` + room + " " + Lect)
+	Subj := rSubj.FindStringSubmatch(text)[1]
+
 	subj.Name = Subj
 	subj.Lector = Lect
-	subj.Room = Room
-	
-	depart.Lessons = append(depart.Lessons, subj)
+	subj.Room = room
 
-	return depart
+	return subj
 }
+
 /**/
-
-
-
-
-
-
-
-
-
