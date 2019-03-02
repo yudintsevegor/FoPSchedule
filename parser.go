@@ -47,7 +47,9 @@ func main() {
 		}
 	})
 
-	var reGrp = regexp.MustCompile(`4\d+`)
+	course := "4"
+	var reGrp = regexp.MustCompile(course + `\d{2}`)
+	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
 
 	grpbegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -70,13 +72,15 @@ func main() {
 		if grpsFound > 1 {
 			return
 		}
-		depart := Department{}
+		//if set []Subject, 0, 5, program will panic. WHY?
+		
 		text := std.Text()
 		if isGroups && text != grpEnd {
 			resFromReg := reGrp.FindAllString(text, -1)
 			eachColumn[indx] = resFromReg
 			indx++
 			for _, val := range resFromReg {
+				depart := Department{Lessons: make([]Subject, 5, 5)}
 				depart.Number = val
 				departments = append(departments, depart)
 			}
@@ -88,12 +92,11 @@ func main() {
 		} else if text == grpEnd {
 			isGroups = false
 		}
-		//		fmt.Println(text)
 	})
-
-	for _, key := range departments {
-		fmt.Println(key)
-	}
+//
+//	for _, key := range departments {
+//		fmt.Println(key)
+//	}
 
 	for key, val := range eachColumn {
 		fmt.Println(key, val)
@@ -114,12 +117,13 @@ func main() {
 	var tmp int
 
 	var countSmall0 int
+	var n int
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		//		fmt.Println("TD")
 		text := std.Text()
 
 		if class, ok := std.Attr("class"); ok {
-			//			For debugging. To show only Monday.
+//			For debugging. To show only Monday.
 			if text == t {
 				tmp++
 			}
@@ -129,17 +133,16 @@ func main() {
 
 			if strings.Contains(class, tdtime) {
 				if time == text {
-					//					fmt.Println(time, binaryColumns)
 					nextStr = false
 					ind = 0
 				} else if time == "" {
 					time = text
 					nextStr = true
 				} else {
+					n++
 					time = text
 					nextStr = true
 					ind = 0
-					//					fmt.Println(time, binaryColumns)
 					for i := 0; i < quantity; i++ {
 						binaryColumns[i] = 0
 					}
@@ -154,8 +157,7 @@ func main() {
 				}
 			})
 
-			if countSmall0 > 0 {
-				countSmall0 = 0
+			if countSmall0 > 0 && class != tdsmall + "0" {
 				return
 			}
 
@@ -165,44 +167,71 @@ func main() {
 			})
 
 			if strings.Contains(class, tditem) {
+				fmt.Println(class)
 				number, err := fromStringToInt(class)
 				if err != nil {
 					log.Fatal(err)
 				}
 
 				subject := parseGroups(text, room)
-				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n\n", subject.Name, subject.Room, subject.Lector)
+				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
+				
+				resFromReg := reGrp.FindAllString(text, -1)
+				fmt.Println(resFromReg, len(resFromReg))
+				if len(resFromReg) == 0{
+					var allGr = make([]string, 0, 1)
+					for i := ind; i < ind + number; i++{
+						allGr = append(allGr, eachColumn[i]...)
+					}
+					for _, dep := range departments{
+						for _, gr := range allGr{
+							if dep.Number == gr {
+								dep.Lessons[n] = subject
+							}
+						}
+					}
+				} else {
+					if reInterval.MatchString(text){
+						interval := reInterval.FindStringSubmatch(text)
+						left, _ := strconv.Atoi(interval[1])
+						right,_ := strconv.Atoi(interval[2])
+						
+						for i := left + 1; i < right; i++{
+							resFromReg = append(resFromReg, strconv.Itoa(i))
+						}
+					}
 
-				//				fmt.Println(class, number, len(binaryColumns), quantity)
+					for _, dep := range departments{
+						for _, gr := range resFromReg{
+							if dep.Number == gr {
+								dep.Lessons[n] = subject
+							}
+						}
+					}
+				}
+				
 				for i := ind; i < ind+number; i++ {
 					binaryColumns[i]++
 				}
 				ind = ind + number
-				//				fmt.Println("-----------------------------------------------------------------------------------")
-				//				rr, _ := std.Html()
-				//				fmt.Println(rr)
 			} else if strings.Contains(class, tdsmall) {
+				fmt.Println(class)
 				number, err := fromStringToInt(class)
 				if err != nil {
 					log.Fatal(err)
 				}
 
-				/*
-					if number == 0 {
-						fmt.Println(class, text)
-						return
-					}
-				*/
 				subject := parseGroups(text, room)
-				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n\n", subject.Name, subject.Room, subject.Lector)
-
-				//				if number != 0 {
-				//				fmt.Println(nextStr)
+				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				if !nextStr {
-					//						for j := 0; j < number; j++{
-					//							binaryColumns[indexSlice[j]] += 0.5
-					//						}
-					//						indexSlice = indexSlice[:number]
+					if countSmall0 > 0{
+						countSmall0--
+						if countSmall0 != 0{
+							return
+						}
+						number = 1
+					}
+					
 					for j := 0; j < number; j++ {
 						for i := 0; i < quantity; i++ {
 							if binaryColumns[i] == 0.5 {
@@ -212,24 +241,28 @@ func main() {
 						}
 					}
 				} else {
-					//	fmt.Println(class, ind, number, len(binaryColumns), quantity)
-					//k := 0
+					if countSmall0 > 0{
+						countSmall0--
+						if countSmall0 != 0{
+							return
+						}
+						number = 1
+					}
 					for i := ind; i < ind+number; i++ {
-						//							fmt.Println(k)
-						//							indexSlice[k] = i
 						if binaryColumns[i] == 0 {
 							binaryColumns[i] += 0.5
 						}
-						//							k++
 					}
 					ind = ind + number
 				}
-				//				}
 			}
-			fmt.Println(time, binaryColumns, class, text)
+			fmt.Println(time, binaryColumns, class, text, "\n")
 		}
-		//		fmt.Println(text)
 	})
+	for _, val := range departments{
+			fmt.Println(val.Number)
+			fmt.Println(val.Lessons, "\n")
+	}
 }
 
 func fromStringToInt(class string) (int, error) {
@@ -239,7 +272,6 @@ func fromStringToInt(class string) (int, error) {
 	return number, err
 }
 
-/**/
 var practice = "Преддипломная практика"
 var war = "ВОЕННАЯ ПОДГОТОВКА"
 var mfk = "МЕЖФАКУЛЬТЕТСКИЕ КУРСЫ"
@@ -285,7 +317,6 @@ func parseGroups(text, room string) Subject {
 	subj.Lector = Lect
 	subj.Room = room
 
+
 	return subj
 }
-
-/**/
