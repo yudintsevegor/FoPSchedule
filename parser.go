@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-//	"strconv"
 	"strings"
 )
 
@@ -116,8 +115,9 @@ func main() {
 	var numberBeforeSmall0 int
 	var countSmall0 int
 	var n int
-//	var indMap = make(map[int]int)
+	var is2Weeks bool
 	var Spans = make([]Interval, 10, 10)
+	var insertedGroups = make([]string, 5)
 
 	var num int
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
@@ -135,15 +135,15 @@ func main() {
 
 			if strings.Contains(class, tdtime) {
 				if time == text {
-					nextStr = true
 					num = 0
+					nextStr = true
 					ind = 0
 					numberBeforeSmall0 = 0
 				} else if time == "" {
 					time = text
 					nextStr = false
 				} else {
-//					indMap = make(map[int]int)
+					num = 0
 					Spans = make([]Interval, 10, 10)
 					n++
 					time = text
@@ -160,87 +160,90 @@ func main() {
 				}
 			})
 
-			if countSmall0 > 0 && class != tdsmall + "0" {
-				number, err := fromStringToInt(class)
-				if err != nil {
-					log.Fatal(err)
-				}
-				numberBeforeSmall0 = number
-				classBeforeSmall0 = class
-				return
+			if countSmall0 <= 0{
+				insertedGroups = make([]string, 5)
 			}
 
-			var fullDay bool
+			if countSmall0 > 0 && class != tdsmall + "0" {
+				number:= fromStringToInt(class)
+				numberBeforeSmall0 = number
+				classBeforeSmall0 = class
+				
+				return
+			} else if countSmall0 == 0 {
+				classBeforeSmall0 = class
+			}
+
+			var allGr = make([]string, 0, 5)
 			var room string
 			std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
 				room = sel.Text()
 			})
 
+			if strings.Contains(classBeforeSmall0, tditem){
+				is2Weeks = true
+			} else {
+				is2Weeks = false
+			}
+			
 			if strings.Contains(class, tditem) {
 				fmt.Println(class)
+				number := fromStringToInt(class)
 				
-				number, err := fromStringToInt(class)
-				if err != nil {
-					log.Fatal(err)
-				}
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				resFromReg := reGrp.FindAllString(text, -1)
 				
-				var allGr = make([]string, 0, 1)
 				for i := ind; i < ind + number; i++{
 					allGr = append(allGr, eachColumn[i]...)
 				}
 				
-				departments = parseLine(departments, allGr, resFromReg, subject, text, n, nextStr)
+				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0 - 1, n, nextStr, is2Weeks)
 				ind = ind + number
 				
 			} else if strings.Contains(class, tdsmall) {
 				fmt.Println(class)
-				number, err := fromStringToInt(class)
-				if err != nil {
-					log.Fatal(err)
-				}
-				if numberBeforeSmall0 == 0 {
-					numberBeforeSmall0 = number
-					fullDay = false
-				} else if strings.Contains(class, tdsmall){
-					fullDay = false
-				} else {
-					fullDay = true
-				}
-
+				number := fromStringToInt(class)
+				
+				
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				resFromReg := reGrp.FindAllString(text, -1)
-				
-				var allGr = make([]string, 0, 5)
+
+				if numberBeforeSmall0 == 0 {
+					numberBeforeSmall0 = number
+				}
+								
 				if !nextStr {
-					fmt.Println(ind, numberBeforeSmall0, classBeforeSmall0, fullDay)
+//					fmt.Println("==========================inserted groups and countSmall0 and is2Weeks================================")
+//					fmt.Println(insertedGroups, countSmall0, is2Weeks)
+//					fmt.Println("==========================================================")
+					
+					fmt.Println(class, ind, numberBeforeSmall0, classBeforeSmall0)
 					if !strings.Contains(class, tdsmall + "0") || !strings.Contains(classBeforeSmall0, tditem) {
-						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind + numberBeforeSmall0 -1 {
-							span := Interval{Start: ind, End: ind + numberBeforeSmall0 - 1}
+						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind + numberBeforeSmall0 {
+							span := Interval{Start: ind, End: ind + numberBeforeSmall0 }
 							Spans[num] = span
-							fmt.Println(Spans[num])
+							fmt.Println("SPANS!!!!!", num, Spans[num])
 							num++
 						}
 					}
 					for i := ind; i < ind + numberBeforeSmall0; i++{
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					departments = parseLine(departments, allGr, resFromReg, subject, text, n, nextStr)
+//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, n, nextStr)
 
 				 } else { //NEXT STRING
-					for i := Spans[num].Start; i < Spans[num].End + 1; i++{
+					is2Weeks = false
+					fmt.Println(Spans)
+					for i := Spans[num].Start; i < Spans[num].End; i++{
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					departments = parseLine(departments, allGr, resFromReg, subject, text, n, nextStr)
+//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
 					num++
 				}
 				
-//				for _, dep := range departments{
-//						fmt.Println(dep)
-//				}
+				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0 - 1, n, nextStr, is2Weeks)
 				
 				if countSmall0 > 0{
 					countSmall0--
@@ -261,37 +264,3 @@ func main() {
 		fmt.Println(val.Lessons, "\n")
 	}
 }
-
-
-
-//						countSmall0--
-//						if countSmall0 == 0{
-//							fmt.Println("===================================================")
-//							fmt.Println(allGr)
-//							fmt.Println(resFromReg)
-//							grWithEmpty := make([]string, 0, 1)
-//							for i, a := range allGr{
-//								for _, b := range resFromReg{
-//									if a == b{
-//										allGr[i] = "0"
-//									}
-//								}
-//							}
-//							for _, a := range allGr{
-//								if a != "0"{
-//									grWithEmpty = append(grWithEmpty, a)
-//								}
-//							}
-//							fmt.Println(grWithEmpty)
-//							for _, dep := range departments{
-//								for _, gr := range grWithEmpty{
-//									if dep.Number == gr {
-//										newSubj := Subject{}
-//										newSubj.Name = "__"
-//										dep.Lessons[n] = newSubj
-//									}
-//								}
-//							}
-//						}
-//						countSmall0++
-
