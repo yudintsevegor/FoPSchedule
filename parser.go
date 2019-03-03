@@ -22,6 +22,11 @@ type Department struct {
 	Lessons []Subject
 }
 
+type Interval struct {
+	Start int
+	End int
+}
+
 var re = regexp.MustCompile(`[a-zA-z]([0-9]+)`)
 
 func main() {
@@ -93,15 +98,10 @@ func main() {
 			isGroups = false
 		}
 	})
-//
-//	for _, key := range departments {
-//		fmt.Println(key)
-//	}
 
 	for key, val := range eachColumn {
 		fmt.Println(key, val)
 	}
-
 
 	var time string
 	var nextStr bool
@@ -117,10 +117,11 @@ func main() {
 	var numberBeforeSmall0 int
 	var countSmall0 int
 	var n int
-	var indMap = make(map[int]int)
-	
+//	var indMap = make(map[int]int)
+	var Spans = make([]Interval, 10, 10)
+
+	var num int
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
-		//		fmt.Println("TD")
 		text := std.Text()
 
 		if class, ok := std.Attr("class"); ok {
@@ -128,21 +129,23 @@ func main() {
 			if text == t {
 				tmp++
 			}
-			if tmp > 6 || tmp < 5 {
-//			if tmp > 2  {
+//			if tmp > 6 || tmp < 5 {
+			if tmp > 2  {
 				return
 			}
 
 			if strings.Contains(class, tdtime) {
 				if time == text {
 					nextStr = true
+					num = 0
 					ind = 0
 					numberBeforeSmall0 = 0
 				} else if time == "" {
 					time = text
 					nextStr = false
 				} else {
-					indMap = make(map[int]int)
+//					indMap = make(map[int]int)
+					Spans = make([]Interval, 10, 10)
 					n++
 					time = text
 					nextStr = false
@@ -219,10 +222,7 @@ func main() {
 				ind = ind + number
 				
 			} else if strings.Contains(class, tdsmall) {
-//				for _, val := range departments{
-//						fmt.Println(val.Number)
-//						fmt.Println(val.Lessons, "\n")
-//				}
+				
 				fmt.Println(class)
 				number, err := fromStringToInt(class)
 				if err != nil {
@@ -231,9 +231,7 @@ func main() {
 				if numberBeforeSmall0 == 0 {
 					numberBeforeSmall0 = number
 					fullDay = false
-//				} else if numberBeforeSmall0 !=0 && strings.Contains(classBeforeSmall0, tditem) {
-//					fullDay = false
-				} else if strings.Contains(classBeforeSmall0, tdsmall){
+				} else if strings.Contains(class, tdsmall){
 					fullDay = false
 				} else {
 					fullDay = true
@@ -246,7 +244,13 @@ func main() {
 				if !nextStr {
 					fmt.Println(ind, numberBeforeSmall0, classBeforeSmall0, fullDay)
 					if !strings.Contains(class, tdsmall + "0") || !strings.Contains(classBeforeSmall0, tditem) {
-						indMap[ind] = ind + numberBeforeSmall0 - 1
+//						indMap[ind] = ind + numberBeforeSmall0 - 1
+						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind + numberBeforeSmall0 -1 {
+							span := Interval{Start: ind, End: ind + numberBeforeSmall0 - 1}
+							Spans[num] = span
+							fmt.Println(Spans[num])
+							num++
+						}
 					}
 					
 					var allGr = make([]string, 0, 5)
@@ -284,49 +288,20 @@ func main() {
 								}
 							}
 						}
-//						countSmall0--
-//						if countSmall0 == 0{
-//							fmt.Println("===================================================")
-//							fmt.Println(allGr)
-//							fmt.Println(resFromReg)
-//							grWithEmpty := make([]string, 0, 1)
-//							for i, a := range allGr{
-//								for _, b := range resFromReg{
-//									if a == b{
-//										allGr[i] = "0"
-//									}
-//								}
-//							}
-//							for _, a := range allGr{
-//								if a != "0"{
-//									grWithEmpty = append(grWithEmpty, a)
-//								}
-//							}
-//							fmt.Println(grWithEmpty)
-//							for _, dep := range departments{
-//								for _, gr := range grWithEmpty{
-//									if dep.Number == gr {
-//										newSubj := Subject{}
-//										newSubj.Name = "__"
-//										dep.Lessons[n] = newSubj
-//									}
-//								}
-//							}
-//						}
-//						countSmall0++
 					}
 				 } else { //NEXT STRING
 					
-					fmt.Println(indMap)
 					if len(resFromReg) == 0{
 						var allGr = make([]string, 0, 1)
-						for i := ind; i < ind + numberBeforeSmall0; i++{
+						fmt.Println(Spans[num], num)
+						for i := Spans[num].Start; i < Spans[num].End + 1; i++{
+//						for i := ind; i < ind + numberBeforeSmall0; i++{
 							allGr = append(allGr, eachColumn[i]...)
 						}
 						for _, dep := range departments{
 							for _, gr := range allGr{
 								if dep.Number == gr {
-//									fmt.Println(dep.Number, dep.Lessons)
+									fmt.Println(classBeforeSmall0)
 									fmt.Println("FULLDAY!!! ", fullDay)
 									newSubj := Subject{}
 									if !fullDay{
@@ -371,10 +346,11 @@ func main() {
 							}
 						}
 					}
+					num++
 				}
-//				for _, dep := range departments{
-//						fmt.Println(dep)
-//				}
+				for _, dep := range departments{
+						fmt.Println(dep)
+				}
 				if countSmall0 > 0{
 					countSmall0--
 					if countSmall0 != 0{
@@ -451,3 +427,34 @@ func parseGroups(text, room string) Subject {
 
 	return subj
 }
+//						countSmall0--
+//						if countSmall0 == 0{
+//							fmt.Println("===================================================")
+//							fmt.Println(allGr)
+//							fmt.Println(resFromReg)
+//							grWithEmpty := make([]string, 0, 1)
+//							for i, a := range allGr{
+//								for _, b := range resFromReg{
+//									if a == b{
+//										allGr[i] = "0"
+//									}
+//								}
+//							}
+//							for _, a := range allGr{
+//								if a != "0"{
+//									grWithEmpty = append(grWithEmpty, a)
+//								}
+//							}
+//							fmt.Println(grWithEmpty)
+//							for _, dep := range departments{
+//								for _, gr := range grWithEmpty{
+//									if dep.Number == gr {
+//										newSubj := Subject{}
+//										newSubj.Name = "__"
+//										dep.Lessons[n] = newSubj
+//									}
+//								}
+//							}
+//						}
+//						countSmall0++
+
