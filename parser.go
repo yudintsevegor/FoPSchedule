@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 type Subject struct {
@@ -241,10 +240,10 @@ func main() {
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				resFromReg := reGrp.FindAllString(text, -1)
 				
+				var allGr = make([]string, 0, 5)
 				if !nextStr {
 					fmt.Println(ind, numberBeforeSmall0, classBeforeSmall0, fullDay)
 					if !strings.Contains(class, tdsmall + "0") || !strings.Contains(classBeforeSmall0, tditem) {
-//						indMap[ind] = ind + numberBeforeSmall0 - 1
 						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind + numberBeforeSmall0 -1 {
 							span := Interval{Start: ind, End: ind + numberBeforeSmall0 - 1}
 							Spans[num] = span
@@ -252,105 +251,23 @@ func main() {
 							num++
 						}
 					}
-					
-					var allGr = make([]string, 0, 5)
 					for i := ind; i < ind + numberBeforeSmall0; i++{
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					if len(resFromReg) == 0{
-						for _, dep := range departments{
-							for _, gr := range allGr{
-								if dep.Number == gr {
-									newSubj := Subject{}
-									newSubj = subject
-									dep.Lessons[n] = newSubj
-//									fmt.Println(dep.Number, dep.Lessons)
-								}
-							}
-						}
-					} else {
-						if reInterval.MatchString(text){
-							interval := reInterval.FindStringSubmatch(text)
-							left, _ := strconv.Atoi(interval[1])
-							right, _ := strconv.Atoi(interval[2])
-							
-							for i := left + 1; i < right; i++{
-								resFromReg = append(resFromReg, strconv.Itoa(i))
-							}
-						}
-						for _, dep := range departments{
-							for _, gr := range resFromReg{
-								if dep.Number == gr {
-									newSubj := Subject{}
-									newSubj = subject
-									dep.Lessons[n] = newSubj
-//									fmt.Println(dep.Number, dep.Lessons)
-								}
-							}
-						}
-					}
-				 } else { //NEXT STRING
-					
-					if len(resFromReg) == 0{
-						var allGr = make([]string, 0, 1)
-						fmt.Println(Spans[num], num)
-						for i := Spans[num].Start; i < Spans[num].End + 1; i++{
-//						for i := ind; i < ind + numberBeforeSmall0; i++{
-							allGr = append(allGr, eachColumn[i]...)
-						}
-						for _, dep := range departments{
-							for _, gr := range allGr{
-								if dep.Number == gr {
-									fmt.Println(classBeforeSmall0)
-									fmt.Println("FULLDAY!!! ", fullDay)
-									newSubj := Subject{}
-									if !fullDay{
-										newSubj.Lector = dep.Lessons[n].Lector + "@" + subject.Lector
-										newSubj.Room = dep.Lessons[n].Room + "@" + subject.Room
-										newSubj.Name = dep.Lessons[n].Name + "@" + subject.Name
-//										fmt.Println(dep.Number, dep.Lessons, "\n", newSubj)
-										dep.Lessons[n] = newSubj
-										continue
-									}
-									dep.Lessons[n] = subject
-								}
-							}
-						}
-					} else {
-						if reInterval.MatchString(text){
-							interval := reInterval.FindStringSubmatch(text)
-							left, _ := strconv.Atoi(interval[1])
-							right, _ := strconv.Atoi(interval[2])
-							
-							for i := left + 1; i < right; i++{
-								resFromReg = append(resFromReg, strconv.Itoa(i))
-							}
-						}
+					departments = parseLine(departments, allGr, resFromReg, subject, text, n, nextStr)
 
-						for _, dep := range departments{
-							for _, gr := range resFromReg{
-								if dep.Number == gr {
-//									fmt.Println(dep.Number, dep.Lessons)
-									fmt.Println("FULLDAY!!! ", fullDay)
-									newSubj := Subject{}
-									if !fullDay{
-										newSubj.Lector = dep.Lessons[n].Lector + "@" + subject.Lector
-										newSubj.Room = dep.Lessons[n].Room + "@" + subject.Room
-										newSubj.Name = dep.Lessons[n].Name + "@" + subject.Name
-//										fmt.Println(dep.Number, dep.Lessons, "\n", newSubj)
-										dep.Lessons[n] = newSubj
-										continue
-									}
-									dep.Lessons[n] = subject
-								}
-							}
-						}
+				 } else { //NEXT STRING
+					for i := Spans[num].Start; i < Spans[num].End + 1; i++{
+						allGr = append(allGr, eachColumn[i]...)
 					}
+					departments = parseLine(departments, allGr, resFromReg, subject, text, n, nextStr)
 					num++
 				}
-				for _, dep := range departments{
-						fmt.Println(dep)
-				}
+				
+//				for _, dep := range departments{
+//						fmt.Println(dep)
+//				}
+				
 				if countSmall0 > 0{
 					countSmall0--
 					if countSmall0 != 0{
@@ -371,62 +288,8 @@ func main() {
 	}
 }
 
-func fromStringToInt(class string) (int, error) {
-	num := re.FindStringSubmatch(class)[1]
-	number, err := strconv.Atoi(num)
-
-	return number, err
-}
-
-var practice = "Преддипломная практика"
-var war = "ВОЕННАЯ ПОДГОТОВКА"
-var mfk = "МЕЖФАКУЛЬТЕТСКИЕ КУРСЫ"
-
-func parseGroups(text, room string) Subject {
-	subj := Subject{}
-
-	var isSpace bool
-	for _, val := range text {
-		isSpace = unicode.IsSpace(val)
-		break
-	}
-
-	if isSpace {
-		subj.Name = "__"
-		return subj
-	}
-
-	if strings.Contains(text, practice) {
-		subj.Name = practice
-
-		return subj
-	}
-
-	if strings.Contains(text, mfk) {
-		subj.Name = mfk
-
-		return subj
-	}
-	if strings.Contains(text, war) {
-		subj.Name = war
-
-		return subj
-	}
-
-	//	fmt.Println("TEXT: ", text)
-	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
-	Lect := rLect.FindStringSubmatch(text)[1]
-
-	rSubj := regexp.MustCompile(`([^0-9\-]*) ` + room + " " + Lect)
-	Subj := rSubj.FindStringSubmatch(text)[1]
-
-	subj.Name = Subj
-	subj.Lector = Lect
-	subj.Room = room
 
 
-	return subj
-}
 //						countSmall0--
 //						if countSmall0 == 0{
 //							fmt.Println("===================================================")
