@@ -1,8 +1,8 @@
 package main
 
 import (
-	"log"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,7 +12,7 @@ import (
 var course = "4"
 var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
 
-func parseLine(departments []Department, allGr []string, resFromReg []string, insertedGroups []string, subject Subject, text string, countSmall0,  n int, nextStr, is2Weeks bool) ([]Department, []string){
+func parseLine(departments []Department, allGr []string, resFromReg []string, insertedGroups []string, subject Subject, text string, countSmall0, n int, nextStr, is2Weeks bool) ([]Department, []string) {
 	if len(resFromReg) == 0 {
 		for _, dep := range departments {
 			for _, gr := range allGr {
@@ -33,7 +33,6 @@ func parseLine(departments []Department, allGr []string, resFromReg []string, in
 		return departments, insertedGroups
 	}
 
-	
 	if reInterval.MatchString(text) {
 		interval := reInterval.FindStringSubmatch(text)
 		left, _ := strconv.Atoi(interval[1])
@@ -62,28 +61,28 @@ func parseLine(departments []Department, allGr []string, resFromReg []string, in
 		}
 	}
 
-	 if countSmall0 > 0 || is2Weeks {
+	if countSmall0 > 0 || is2Weeks {
 		return departments, insertedGroups
 	}
-	
-	var mapAllGr =make(map[string]string)
-	for _, gr := range allGr{
+
+	var mapAllGr = make(map[string]string)
+	for _, gr := range allGr {
 		mapAllGr[gr] = ""
 	}
-	
-	for _, v1 := range insertedGroups{
-		for v2, _ := range mapAllGr{
+
+	for _, v1 := range insertedGroups {
+		for v2, _ := range mapAllGr {
 			if v2 == v1 {
 				delete(mapAllGr, v2)
 			}
 		}
 	}
-//	fmt.Println("=================inserted groups and mapAllGr=========================================")
-//	fmt.Println(insertedGroups)
-//	fmt.Println("==========================================================")
-//	fmt.Println(mapAllGr)
-//	fmt.Println("==========================================================")
-	
+	//	fmt.Println("=================inserted groups and mapAllGr=========================================")
+	//	fmt.Println(insertedGroups)
+	//	fmt.Println("==========================================================")
+	//	fmt.Println(mapAllGr)
+	//	fmt.Println("==========================================================")
+
 	for _, dep := range departments {
 		for gr, _ := range mapAllGr {
 			if dep.Number != gr {
@@ -99,24 +98,24 @@ func parseLine(departments []Department, allGr []string, resFromReg []string, in
 				newSubj.Room = dep.Lessons[n].Room + "@" + "__"
 				newSubj.Lector = dep.Lessons[n].Lector + "@" + "__"
 			}
-			
+
 			dep.Lessons[n] = newSubj
 		}
 	}
-	if countSmall0 <= 0{
+	if countSmall0 <= 0 {
 		insertedGroups = make([]string, 5)
 	}
-	
+
 	return departments, insertedGroups
 }
 
-func fromStringToInt(class string) (int) {
+func fromStringToInt(class string) int {
 	num := re.FindStringSubmatch(class)[1]
 	number, err := strconv.Atoi(num)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	return number
 }
 

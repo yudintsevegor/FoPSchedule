@@ -22,7 +22,7 @@ type Department struct {
 
 type Interval struct {
 	Start int
-	End int
+	End   int
 }
 
 var re = regexp.MustCompile(`[a-zA-z]([0-9]+)`)
@@ -52,7 +52,7 @@ func main() {
 
 	course := "4"
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
-//	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
+	//	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
 
 	grpbegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -76,7 +76,7 @@ func main() {
 			return
 		}
 		//if set []Subject, 0, 5, program will panic. WHY?
-		
+
 		text := std.Text()
 		if isGroups && text != grpEnd {
 			resFromReg := reGrp.FindAllString(text, -1)
@@ -124,12 +124,12 @@ func main() {
 		text := std.Text()
 
 		if class, ok := std.Attr("class"); ok {
-//			For debugging. To show only Monday.
+			//			For debugging. To show only Monday.
 			if text == t {
 				tmp++
 			}
-//			if tmp > 6 || tmp < 5 {
-			if tmp > 2  {
+			//			if tmp > 6 || tmp < 5 {
+			if tmp > 2 {
 				return
 			}
 
@@ -160,15 +160,15 @@ func main() {
 				}
 			})
 
-			if countSmall0 <= 0{
+			if countSmall0 <= 0 {
 				insertedGroups = make([]string, 5)
 			}
 
-			if countSmall0 > 0 && class != tdsmall + "0" {
-				number:= fromStringToInt(class)
+			if countSmall0 > 0 && class != tdsmall+"0" {
+				number := fromStringToInt(class)
 				numberBeforeSmall0 = number
 				classBeforeSmall0 = class
-				
+
 				return
 			} else if countSmall0 == 0 {
 				classBeforeSmall0 = class
@@ -180,32 +180,31 @@ func main() {
 				room = sel.Text()
 			})
 
-			if strings.Contains(classBeforeSmall0, tditem){
+			if strings.Contains(classBeforeSmall0, tditem) {
 				is2Weeks = true
 			} else {
 				is2Weeks = false
 			}
-			
+
 			if strings.Contains(class, tditem) {
 				fmt.Println(class)
 				number := fromStringToInt(class)
-				
+
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				resFromReg := reGrp.FindAllString(text, -1)
-				
-				for i := ind; i < ind + number; i++{
+
+				for i := ind; i < ind+number; i++ {
 					allGr = append(allGr, eachColumn[i]...)
 				}
-				
-				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0 - 1, n, nextStr, is2Weeks)
+
+				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0-1, n, nextStr, is2Weeks)
 				ind = ind + number
-				
+
 			} else if strings.Contains(class, tdsmall) {
 				fmt.Println(class)
 				number := fromStringToInt(class)
-				
-				
+
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
 				resFromReg := reGrp.FindAllString(text, -1)
@@ -213,41 +212,41 @@ func main() {
 				if numberBeforeSmall0 == 0 {
 					numberBeforeSmall0 = number
 				}
-								
+
 				if !nextStr {
-//					fmt.Println("==========================inserted groups and countSmall0 and is2Weeks================================")
-//					fmt.Println(insertedGroups, countSmall0, is2Weeks)
-//					fmt.Println("==========================================================")
-					
+					//					fmt.Println("==========================inserted groups and countSmall0 and is2Weeks================================")
+					//					fmt.Println(insertedGroups, countSmall0, is2Weeks)
+					//					fmt.Println("==========================================================")
+
 					fmt.Println(class, ind, numberBeforeSmall0, classBeforeSmall0)
-					if !strings.Contains(class, tdsmall + "0") || !strings.Contains(classBeforeSmall0, tditem) {
-						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind + numberBeforeSmall0 {
-							span := Interval{Start: ind, End: ind + numberBeforeSmall0 }
+					if !strings.Contains(class, tdsmall+"0") || !strings.Contains(classBeforeSmall0, tditem) {
+						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind+numberBeforeSmall0 {
+							span := Interval{Start: ind, End: ind + numberBeforeSmall0}
 							Spans[num] = span
 							fmt.Println("SPANS!!!!!", num, Spans[num])
 							num++
 						}
 					}
-					for i := ind; i < ind + numberBeforeSmall0; i++{
+					for i := ind; i < ind+numberBeforeSmall0; i++ {
 						allGr = append(allGr, eachColumn[i]...)
 					}
-//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, n, nextStr)
+					//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, n, nextStr)
 
-				 } else { //NEXT STRING
+				} else { //NEXT STRING
 					is2Weeks = false
 					fmt.Println(Spans)
-					for i := Spans[num].Start; i < Spans[num].End; i++{
+					for i := Spans[num].Start; i < Spans[num].End; i++ {
 						allGr = append(allGr, eachColumn[i]...)
 					}
-//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
+					//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
 					num++
 				}
-				
-				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0 - 1, n, nextStr, is2Weeks)
-				
-				if countSmall0 > 0{
+
+				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0-1, n, nextStr, is2Weeks)
+
+				if countSmall0 > 0 {
 					countSmall0--
-					if countSmall0 != 0{
+					if countSmall0 != 0 {
 						return
 					}
 					ind = ind + numberBeforeSmall0
@@ -259,7 +258,7 @@ func main() {
 			fmt.Println(ind, time, class, text, "\n")
 		}
 	})
-	for _, val := range departments{
+	for _, val := range departments {
 		fmt.Println(val.Number)
 		fmt.Println(val.Lessons, "\n")
 	}
