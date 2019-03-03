@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
+//	"strconv"
 	"strings"
 )
 
@@ -53,7 +53,7 @@ func main() {
 
 	course := "4"
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
-	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
+//	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
 
 	grpbegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -185,43 +185,17 @@ func main() {
 				}
 				subject := parseGroups(text, room)
 				fmt.Printf("Name: %v\nRoom: %v\nLector: %v\n", subject.Name, subject.Room, subject.Lector)
-				
 				resFromReg := reGrp.FindAllString(text, -1)
-				if len(resFromReg) == 0{
-					var allGr = make([]string, 0, 1)
-					for i := ind; i < ind + number; i++{
-						allGr = append(allGr, eachColumn[i]...)
-					}
-					for _, dep := range departments{
-						for _, gr := range allGr{
-							if dep.Number == gr {
-								dep.Lessons[n] = subject
-							}
-						}
-					}
-				} else {
-					if reInterval.MatchString(text){
-						interval := reInterval.FindStringSubmatch(text)
-						left, _ := strconv.Atoi(interval[1])
-						right,_ := strconv.Atoi(interval[2])
-						
-						for i := left + 1; i < right; i++{
-							resFromReg = append(resFromReg, strconv.Itoa(i))
-						}
-					}
-
-					for _, dep := range departments{
-						for _, gr := range resFromReg{
-							if dep.Number == gr {
-								dep.Lessons[n] = subject
-							}
-						}
-					}
+				
+				var allGr = make([]string, 0, 1)
+				for i := ind; i < ind + number; i++{
+					allGr = append(allGr, eachColumn[i]...)
 				}
+				
+				departments = parseLine(departments, allGr, resFromReg, subject, text, n, nextStr)
 				ind = ind + number
 				
 			} else if strings.Contains(class, tdsmall) {
-				
 				fmt.Println(class)
 				number, err := fromStringToInt(class)
 				if err != nil {
