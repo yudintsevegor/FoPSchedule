@@ -57,7 +57,7 @@ func main() {
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
 	//	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
 
-	grpbegin := "ГРУППЫ >>"
+	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
 	var grpsFound int
 
@@ -96,7 +96,7 @@ func main() {
 			}
 			groups[text] = ""
 		}
-		if text == grpbegin {
+		if text == grpBegin {
 			grpsFound++
 			isGroups = true
 		} else if text == grpEnd {
@@ -163,20 +163,51 @@ func main() {
 	var Spans = make([]Interval, 10, 10)
 	var insertedGroups = make([]string, 5)
 	var num int
-
+	var Saturday int
 	var columns = " ( first, second, third, fourth, fifth ) "
 	var quesStr = " ( ?, ?, ?, ?, ? ) "
-	
+
+	isSat := false
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		text := std.Text()
-
+		
+		if text == grpBegin{
+			Saturday++
+			fmt.Println("================================================",text, Saturday, "==================================")
+		}
+		
+		if Saturday == 3 && !isSat{
+			for _, val := range departments {
+					var valuesToDB =  make([]interface{}, 0, 1)
+					fmt.Println(val.Number)
+//					fmt.Println(val.Lessons, "\n")
+					for _, les := range val.Lessons{
+						value := les.Name + "%" + les.Lector + "%" + les.Room
+						valuesToDB = append(valuesToDB, value)
+					}
+					fmt.Println(valuesToDB)
+					req := fmt.Sprintf("INSERT INTO `%v`" + columns + "VALUES" + quesStr, val.Number)
+					statement, err := db.Prepare(req)
+					if err != nil{
+						log.Fatal(err)
+					}
+					_, err = statement.Exec(valuesToDB...)
+					if err != nil{
+						log.Fatal(err)
+					}
+					fmt.Println("PUT IN TABLE")
+				}
+			isSat = true	
+		}
+		
 		if class, ok := std.Attr("class"); ok {
 			//			For debugging. To show only Monday.
 			if text == t {
 				tmp++
 			}
+			
 			//			if tmp > 6 || tmp < 5 {
-			if tmp == 3 {
+			if tmp == 3 || Saturday == 3 {
 				fmt.Println("====================================")
 				fmt.Println(tmp, text)
 				fmt.Println("====================================")
@@ -300,28 +331,29 @@ func main() {
 
 //					fmt.Println(class, ind, numberBeforeSmall0, classBeforeSmall0)
 					if !strings.Contains(class, tdsmall+"0") || !strings.Contains(classBeforeSmall0, tditem) {
-						if num == 0 || Spans[num].Start != ind && Spans[num].End != ind+numberBeforeSmall0 {
+//						fmt.Println("SPANS before", num, Spans[num])
+						if num == 0 || Spans[num-1].Start != ind && Spans[num-1].End != ind+numberBeforeSmall0 {
 							span := Interval{Start: ind, End: ind + numberBeforeSmall0}
 							Spans[num] = span
-//							fmt.Println("SPANS!!!!!", num, Spans[num])
+							fmt.Println("SPANS!!!!!", num, Spans[num])
 							num++
 						}
 					}
 					for i := ind; i < ind+numberBeforeSmall0; i++ {
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, n, nextStr)
-
+					//departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, n, nextStr)
 				} else { //NEXT STRING
 					is2Weeks = false
 					fmt.Println(Spans[num], num, text)
 					for i := Spans[num].Start; i < Spans[num].End; i++ {
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					//					departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
-					num++
+					//departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
+					if countSmall0 - 1 == 0 {
+						num++
+					}
 				}
-
 				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0-1, n, nextStr, is2Weeks)
 
 				if countSmall0 > 0 {
