@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+//	"fmt"
 	"log"
 	"regexp"
 	"strconv"
@@ -12,7 +12,7 @@ import (
 var course = "4"
 var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
 
-func parseLine(departments []Department, allGr []string, resFromReg []string, insertedGroups []string, subject Subject, text string, countSmall0, n int, nextStr, is2Weeks bool) ([]Department, []string) {
+func parseLine(departments []Department, allGr, resFromReg, insertedGroups []string, subject Subject, text string, countSmall0, n int, nextStr, is2Weeks bool) ([]Department, []string) {
 	if len(resFromReg) == 0 {
 		for _, dep := range departments {
 			for _, gr := range allGr {
@@ -48,6 +48,7 @@ func parseLine(departments []Department, allGr []string, resFromReg []string, in
 				continue
 			}
 			if !nextStr {
+//				fmt.Println(n)
 				dep.Lessons[n] = subject
 				insertedGroups = append(insertedGroups, gr)
 				continue
