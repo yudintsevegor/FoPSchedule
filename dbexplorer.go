@@ -1,28 +1,27 @@
 package main
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
 	"log"
 	"regexp"
-	
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type NLR struct {
-	Name string
+	Name   string
 	Lector string
-	Room string
+	Room   string
 }
 
-
-func dbExplorer(db *sql.DB) ([][]NLR){
+func dbExplorer(db *sql.DB) [][]NLR {
 	var tablesNames = make([]string, 0, 1)
 	var tableName string
 
 	//For debugging
 	rowsTb, err := db.Query("SHOW TABLES")
-	for rowsTb.Next(){
+	for rowsTb.Next() {
 		err = rowsTb.Scan(&tableName)
 		if err != nil {
 			log.Fatal(err)
@@ -30,12 +29,12 @@ func dbExplorer(db *sql.DB) ([][]NLR){
 		tablesNames = append(tablesNames, tableName)
 	}
 	rowsTb.Close()
-	for _, key := range tablesNames{
+	for _, key := range tablesNames {
 		fmt.Println(key)
 	}
-	
+
 	var allWeek = make([][]NLR, 0, 6)
-	for _, key := range tablesNames{
+	for _, key := range tablesNames {
 		var allWeek = make([][]NLR, 0, 6)
 		req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", key)
 		rows, err := db.Query(req)
@@ -50,17 +49,17 @@ func dbExplorer(db *sql.DB) ([][]NLR){
 		}
 		fmt.Println("==================================" + key + "==============================")
 		for i, v := range allWeek {
-			fmt.Println("===========",i + 1, "========")
+			fmt.Println("===========", i+1, "========")
 			for _, val := range v {
 				fmt.Println(val)
 			}
 		}
 	}
-	
+
 	return allWeek
 }
 
-func main(){
+func main() {
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
 		log.Fatal(err)
@@ -70,24 +69,21 @@ func main(){
 		log.Fatal(err)
 	}
 	_ = dbExplorer(db)
-	
+
 }
 
 var re = regexp.MustCompile("(.*)%(.*)%(.*)")
-func parsePercent(arr []string) ([]NLR){
+
+func parsePercent(arr []string) []NLR {
 	nlr := NLR{}
 	var result = make([]NLR, 0, 5)
 	for _, val := range arr {
-			res := re.FindStringSubmatch(val)
-			nlr.Name = res[1]
-			nlr.Lector = res[2]
-			nlr.Room = res[3]
-			result = append(result, nlr)
+		res := re.FindStringSubmatch(val)
+		nlr.Name = res[1]
+		nlr.Lector = res[2]
+		nlr.Room = res[3]
+		result = append(result, nlr)
 	}
-	
+
 	return result
 }
-
-
-
-
