@@ -173,3 +173,17 @@ func parseGroups(text, room string) Subject {
 
 	return subj
 }
+
+func clean(arr []Department) ([]Department){
+	var result = make([]Department, len(arr))
+
+	for i, d := range arr{
+		s := Department{}
+		s.Number = d.Number
+		s.Lessons = make([]Subject, len(d.Lessons))
+		result[i] = s
+	}
+	
+	return result
+}
+
