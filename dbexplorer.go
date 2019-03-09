@@ -55,27 +55,27 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 	return allWeek
 }
 
-func main() {
-	db, err := sql.Open("mysql", DSN)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-	group := "401"
-	allWeek := dbExplorer(db, group)
-	
-	fmt.Println("==================================" + group + "==============================")
-	for i, v := range allWeek {
-		fmt.Println("===========", i+1, "========")
-		for _, val := range v {
-			fmt.Println(val)
-		}
-	}
-}
-
+//func main() {
+//	db, err := sql.Open("mysql", DSN)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	err = db.Ping()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	group := "401"
+//	allWeek := dbExplorer(db, group)
+//	
+//	fmt.Println("==================================" + group + "==============================")
+//	for i, v := range allWeek {
+//		fmt.Println("===========", i+1, "========")
+//		for _, val := range v {
+//			fmt.Println(val)
+//		}
+//	}
+//}
+//
 var re = regexp.MustCompile("(.*)%(.*)%(.*)")
 
 func parsePercent(arr []string) []Subject {

@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"database/sql"
-//	"time"
-
+	"time"
+	"regexp"
+	"strings"
+	
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -117,7 +119,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	group := "442"
+	group := "401"
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
@@ -128,25 +130,37 @@ func main() {
 	fmt.Println("==========")
 //	calendarId := "primary"
 	calendarId := insertedCalendar.Id
+
+	var isOdd = false
+	t := time.Date(2019, 2, 7, 0, 0, 0, 0, time.UTC)
+	firstDay := int(t.Weekday()) - 1
+	t = t.AddDate(0, 0, 6 - firstDay + 1)
 	
-	for _, day := range allWeek {
-		for i, lesson := range day{
-			events, isEmpty := parseAt(lesson, i)
+	for j := 0; j < len(allWeek); j++ {
+		if j == firstDay {
+			isOdd = !isOdd
+			t = t.AddDate(0, 0, -7)
+		}
+		lessonStart := t.Format("2006-01-02")
+		for i, lesson := range allWeek[j]{
+			events, isEmpty := parseAt(lesson, i, isOdd, lessonStart, t)
 			if isEmpty {
 				continue
 			}
 			for _, event := range events{
-				event, err = srv.Events.Insert(calendarId, event).Do()
+				_, err = srv.Events.Insert(calendarId, event).Do()
 				if err != nil {
 					log.Fatalf("Unable to create event. %v\n", err)
 				}
 				fmt.Printf("Event created: %s\n", event.HtmlLink)
 			}
 		}
+		t = t.AddDate(0, 0, 1)
 	}
 
 }
-var spring = "2019-02-07"
+var springStart = "2019-02-07"
+var springEnd = "20190601"
 //	autumn := "2019-09-01"
 
 var moscowTime = "+03:00"
@@ -158,37 +172,23 @@ var timeIntervals = map[int]LessonRange{
 		4: {Start: "T17:05:00"+moscowTime, End: "T18:40:00"+moscowTime},
 }
 
-func parseAt(subject Subject, i int) ([]calendar.Event, bool){
-	var result = make([]calendar.Event, 0, 2)
-	if subject.Name == "" || subject.Name == "__"{
-		return result, true
+func createEvent(subject Subject, i int, allDay bool, lessonStart string) (*calendar.Event){
+	var freq = make([]string,0,1)
+	if allDay{
+		freq = []string{"RRULE:FREQ=WEEKLY;UNTIL="+springEnd}
+	} else {
+		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL="+springEnd}
 	}
-	re := regexp.MustCompile("(.*)@(.*)")
-	
-	if strings.Contains(subject.Name, "@"){
-		regName := re.FindStringSubmatch(subject.Name)
-		regLector := re.FindStringSubmatch(subject.Lector)
-		regRoom := re.FindStringSubmatch(subject.Room)
-		oddName := regName[1]
-		evenName := regName[2]
-		
-		oddLector := regLector[1]
-		evenLector := regLector[2]
-		
-		oddRoom := regRoom[1]
-		evenRoom := regRoom[2]
-	}
-	
 	event := &calendar.Event{
-		Summary:     "Name of Subject and Lecturer",
+		Summary:     subject.Name +  " " + subject.Lector + " " + subject.Room,
 		Location:    "Lomonosov Moscow State University",//Number of room and direction?
-		Description: "Lecturer's name",
+		Description: subject.Lector,
 		Start: &calendar.EventDateTime{
-			DateTime: spring + timeIntervals[i].Start, // spring ----> season!
+			DateTime: lessonStart + timeIntervals[i].Start, // spring ----> season!
 			TimeZone: "Europe/Moscow",
 		},
 		End: &calendar.EventDateTime{
-			DateTime: spring + timeIntervals[i].End,
+			DateTime: lessonStart + timeIntervals[i].End,
 			TimeZone: "Europe/Moscow",
 		},
 		/*
@@ -213,8 +213,50 @@ func parseAt(subject Subject, i int) ([]calendar.Event, bool){
 			//by default, empty values are omitted from API requests
 			ForceSendFields: []string{"UseDefault", "Overrides"},
 		},
-		Recurrence: []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=20190601"},
+		Recurrence: freq,
 	}
+	return event
+}
+
+func parseAt(subject Subject, i int, isOdd bool, lessonStart string, t time.Time) ([]*calendar.Event, bool){
+	var result = make([]*calendar.Event, 0, 2)
+	if subject.Name == "" || subject.Name == "__"{
+		return result, true
+	}
+	re := regexp.MustCompile("(.*)@(.*)")
+	
+	if strings.Contains(subject.Name, "@"){
+		regName := re.FindStringSubmatch(subject.Name)
+		regLector := re.FindStringSubmatch(subject.Lector)
+		regRoom := re.FindStringSubmatch(subject.Room)
+		
+		oddSubject := Subject{Name: regName[1], Lector: regLector[1], Room: regRoom[1]}
+		evenSubject := Subject{Name: regName[2], Lector: regLector[2], Room: regRoom[2]}
+
+		var oddLessonStart string
+		var evenLessonStart string
+		
+		if isOdd {
+			oddLessonStart = lessonStart
+			evenLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
+		} else {
+			oddLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
+			evenLessonStart = lessonStart
+		}
+		
+		if oddSubject.Name != "" && oddSubject.Name != "__"{
+			event := createEvent(oddSubject, i, false, oddLessonStart)
+			result = append(result, event)
+		}
+		if evenSubject.Name != "" && evenSubject.Name != "__"{
+			event := createEvent(evenSubject, i, false, evenLessonStart)
+			result = append(result, event)
+		}
+		return result, false
+	} 
+	
+	event := createEvent(subject, i, true, lessonStart)
+	result = append(result, event)
 
 	return result, false
 }
