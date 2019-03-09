@@ -1,7 +1,7 @@
 package main
 
 import (
-//	"fmt"
+	//	"fmt"
 	"log"
 	"regexp"
 	"strconv"
@@ -48,7 +48,7 @@ func parseLine(departments []Department, allGr, resFromReg, insertedGroups []str
 				continue
 			}
 			if !nextStr {
-//				fmt.Println(n)
+				//				fmt.Println(n)
 				dep.Lessons[n] = subject
 				insertedGroups = append(insertedGroups, gr)
 				continue
@@ -111,7 +111,7 @@ func parseLine(departments []Department, allGr, resFromReg, insertedGroups []str
 }
 
 func fromStringToInt(class string) int {
-	num := re.FindStringSubmatch(class)[1]
+	num := reNum.FindStringSubmatch(class)[1]
 	number, err := strconv.Atoi(num)
 	if err != nil {
 		log.Fatal(err)
@@ -119,10 +119,6 @@ func fromStringToInt(class string) int {
 
 	return number
 }
-
-var practice = "Преддипломная практика"
-var war = "ВОЕННАЯ ПОДГОТОВКА"
-var mfk = "МЕЖФАКУЛЬТЕТСКИЕ КУРСЫ"
 
 func parseGroups(text, room string) Subject {
 	subj := Subject{}
@@ -174,16 +170,15 @@ func parseGroups(text, room string) Subject {
 	return subj
 }
 
-func clean(arr []Department) ([]Department){
+func clean(arr []Department) []Department {
 	var result = make([]Department, len(arr))
 
-	for i, d := range arr{
+	for i, d := range arr {
 		s := Department{}
 		s.Number = d.Number
 		s.Lessons = make([]Subject, len(d.Lessons))
 		result[i] = s
 	}
-	
+
 	return result
 }
-

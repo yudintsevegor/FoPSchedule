@@ -4,14 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"regexp"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-
 func dbExplorer(db *sql.DB, group string) [][]Subject {
-//func dbExplorer(db *sql.DB) [][]Subject {
 	var tablesNames = make([]string, 0, 1)
 	var tableName string
 
@@ -25,32 +22,32 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 		tablesNames = append(tablesNames, tableName)
 	}
 	rowsTb.Close()
-	for _, key := range tablesNames {
-		fmt.Println(key)
-	}
+	//	for _, key := range tablesNames {
+	//		fmt.Println(key)
+	//	}
 
 	var allWeek = make([][]Subject, 0, 6)
-//	for _, key := range tablesNames {
-//		var allWeek = make([][]Subject, 0, 6)
-		req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", group)
-		rows, err := db.Query(req)
-		for rows.Next() {
-			var rawLes = make([]string, 5)
-			err = rows.Scan(&rawLes[0], &rawLes[1], &rawLes[2], &rawLes[3], &rawLes[4])
-			if err != nil {
-				log.Fatal(err)
-			}
-			les := parsePercent(rawLes)
-			allWeek = append(allWeek, les)
+	//	for _, key := range tablesNames {
+	//		var allWeek = make([][]Subject, 0, 6)
+	req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", group)
+	rows, err := db.Query(req)
+	for rows.Next() {
+		var rawLes = make([]string, 5)
+		err = rows.Scan(&rawLes[0], &rawLes[1], &rawLes[2], &rawLes[3], &rawLes[4])
+		if err != nil {
+			log.Fatal(err)
 		}
-//		fmt.Println("==================================" + group + "==============================")
-//		for i, v := range allWeek {
-//			fmt.Println("===========", i+1, "========")
-//			for _, val := range v {
-//				fmt.Println(val)
-//			}
-//		}
-//	}
+		les := parsePercent(rawLes)
+		allWeek = append(allWeek, les)
+	}
+	//		fmt.Println("==================================" + group + "==============================")
+	//		for i, v := range allWeek {
+	//			fmt.Println("===========", i+1, "========")
+	//			for _, val := range v {
+	//				fmt.Println(val)
+	//			}
+	//		}
+	//	}
 
 	return allWeek
 }
@@ -66,7 +63,7 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 //	}
 //	group := "401"
 //	allWeek := dbExplorer(db, group)
-//	
+//
 //	fmt.Println("==================================" + group + "==============================")
 //	for i, v := range allWeek {
 //		fmt.Println("===========", i+1, "========")
@@ -76,17 +73,16 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 //	}
 //}
 //
-var re = regexp.MustCompile("(.*)%(.*)%(.*)")
 
 func parsePercent(arr []string) []Subject {
-	nlr := Subject{}
+	sbj := Subject{}
 	var result = make([]Subject, 0, 5)
 	for _, val := range arr {
-		res := re.FindStringSubmatch(val)
-		nlr.Name = res[1]
-		nlr.Lector = res[2]
-		nlr.Room = res[3]
-		result = append(result, nlr)
+		res := rePerc.FindStringSubmatch(val)
+		sbj.Name = res[1]
+		sbj.Lector = res[2]
+		sbj.Room = res[3]
+		result = append(result, sbj)
 	}
 
 	return result

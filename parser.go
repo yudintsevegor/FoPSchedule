@@ -1,19 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
 	"strings"
-	"database/sql"
-	
+
 	"github.com/PuerkitoBio/goquery"
 	_ "github.com/go-sql-driver/mysql"
 )
-
-
-var re = regexp.MustCompile(`[a-zA-z]([0-9]+)`)
 
 func main() {
 	res, err := http.Get("http://ras.phys.msu.ru/table/4/2.html")
@@ -40,7 +37,6 @@ func main() {
 
 	course := "4"
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
-	//	var reInterval = regexp.MustCompile(`(` +  course + `\d{2})\s*\-\s*` + `(` +  course + `\d{2})`)
 
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -48,7 +44,6 @@ func main() {
 
 	var isGroups bool
 	groups := make(map[string]string)
-//	var emptyDep = make([]Department, 0, 5)
 	var departments = make([]Department, 0, 5)
 	Clss := make(map[string]string)
 
@@ -75,8 +70,6 @@ func main() {
 				d := Department{Lessons: make([]Subject, 5, 5)}
 				depart.Number = val
 				d.Number = val
-//				departments = append(departments, depart)
-//				emptyDep = append(emptyDep, d)
 				departments = append(departments, depart)
 			}
 			groups[text] = ""
@@ -89,19 +82,16 @@ func main() {
 		}
 	})
 
-//	var departments = make([]Department, len(emptyDep))
-//	copy(departments, emptyDep)
-	
-	for key, val := range eachColumn{
+	for key, val := range eachColumn {
 		fmt.Println(key, val)
 	}
 
 	db, err := sql.Open("mysql", DSN)
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 	err = db.Ping()
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -114,24 +104,24 @@ func main() {
 				  fifth varchar(255),
 				  PRIMARY KEY (id)
 				) ENGINE=InnoDB DEFAULT CHARSET=utf8; `
-		
+
 	for _, val := range eachColumn {
-		for _, gr := range val{
+		for _, gr := range val {
 			del := fmt.Sprintf("DROP TABLE IF EXISTS `%v`; ", gr)
 			_, err = db.Exec(del)
-			if err != nil{
+			if err != nil {
 				log.Fatal(err)
 			}
-			request := fmt.Sprintf("CREATE TABLE `%v` " + partOfReq, gr)
+			request := fmt.Sprintf("CREATE TABLE `%v` "+partOfReq, gr)
 			_, err = db.Exec(request)
-			if err != nil{
+			if err != nil {
 				log.Fatal(err)
 			}
 		}
 	}
 
 	fmt.Println("TABLES CREATED")
-	
+
 	var time string
 	var nextStr bool
 	var ind int
@@ -155,43 +145,43 @@ func main() {
 	isSat := false
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		text := std.Text()
-		
-		if text == grpBegin{
+
+		if text == grpBegin {
 			Saturday++
-			fmt.Println("================================================",text, Saturday, "==================================")
+			fmt.Println("================================================", text, Saturday, "==================================")
 		}
-		
+
 		if Saturday == 3 && !isSat {
 			for _, val := range departments {
-					var valuesToDB =  make([]interface{}, 0, 1)
-					fmt.Println(val.Number)
-					for _, les := range val.Lessons{
-						value := les.Name + "%" + les.Lector + "%" + les.Room
-						valuesToDB = append(valuesToDB, value)
-					}
-					fmt.Println(valuesToDB)
-					req := fmt.Sprintf("INSERT INTO `%v`" + columns + "VALUES" + quesStr, val.Number)
-					statement, err := db.Prepare(req)
-					if err != nil{
-						log.Fatal(err)
-					}
-					_, err = statement.Exec(valuesToDB...)
-					if err != nil{
-						log.Fatal(err)
-					}
-					fmt.Println("PUT IN TABLE")
+				var valuesToDB = make([]interface{}, 0, 1)
+				fmt.Println(val.Number)
+				for _, les := range val.Lessons {
+					value := les.Name + "%" + les.Lector + "%" + les.Room
+					valuesToDB = append(valuesToDB, value)
 				}
+				fmt.Println(valuesToDB)
+				req := fmt.Sprintf("INSERT INTO `%v`"+columns+"VALUES"+quesStr, val.Number)
+				statement, err := db.Prepare(req)
+				if err != nil {
+					log.Fatal(err)
+				}
+				_, err = statement.Exec(valuesToDB...)
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println("PUT IN TABLE")
+			}
 			isSat = true
 		}
-		
+
 		if class, ok := std.Attr("class"); ok {
 			if text == t {
 				tmp++
 			}
 			//For debugging. To show only Monday.
-//			if tmp > 2 {
-//				return
-//			}
+			//			if tmp > 2 {
+			//				return
+			//			}
 
 			//			if tmp > 6 || tmp < 5 {
 			if tmp == 3 {
@@ -199,47 +189,47 @@ func main() {
 				fmt.Println(tmp, text)
 				fmt.Println("====================================")
 				for _, val := range departments {
-					var valuesToDB =  make([]interface{}, 0, 1)
+					var valuesToDB = make([]interface{}, 0, 1)
 					fmt.Println(val.Number)
-					for _, les := range val.Lessons{
+					for _, les := range val.Lessons {
 						value := les.Name + "%" + les.Lector + "%" + les.Room
 						valuesToDB = append(valuesToDB, value)
 					}
 					fmt.Println(valuesToDB)
-					req := fmt.Sprintf("INSERT INTO `%v`" + columns + "VALUES" + quesStr, val.Number)
+					req := fmt.Sprintf("INSERT INTO `%v`"+columns+"VALUES"+quesStr, val.Number)
 					statement, err := db.Prepare(req)
-					if err != nil{
+					if err != nil {
 						log.Fatal(err)
 					}
 					_, err = statement.Exec(valuesToDB...)
-					if err != nil{
+					if err != nil {
 						log.Fatal(err)
 					}
 					fmt.Println("PUT IN TABLE")
 				}
-//				fmt.Println(emptyDep, tmp)
+				//				fmt.Println(emptyDep, tmp)
 				tmp = 1
-//				departments = emptyDep
+				//				departments = emptyDep
 				n = -1
 				fmt.Println(n)
-//				fmt.Println(departments, tmp)
+				//				fmt.Println(departments, tmp)
 				departments = clean(departments)
-//				fmt.Println(departments, tmp)
+				//				fmt.Println(departments, tmp)
 			}
 
 			if strings.Contains(class, tdtime) {
 				if time == "" {
-					fmt.Println("====if =============", n, text,"=================")
+					fmt.Println("====if =============", n, text, "=================")
 					time = text
 					nextStr = false
-				}else if time == text {
-					fmt.Println("====else if =============", n, text,"=================")
+				} else if time == text {
+					fmt.Println("====else if =============", n, text, "=================")
 					num = 0
 					nextStr = true
 					ind = 0
 					numberBeforeSmall0 = 0
 				} else {
-					fmt.Println("== else ===============", n, text,"=================")
+					fmt.Println("== else ===============", n, text, "=================")
 					num = 0
 					Spans = make([]Interval, 10, 10)
 					n++
@@ -276,15 +266,15 @@ func main() {
 				room = sel.Text()
 			})
 
-			if strings.Contains(classBeforeSmall0, tditem) && countSmall0 > 0{
+			if strings.Contains(classBeforeSmall0, tditem) && countSmall0 > 0 {
 				is2Weeks = true
 			} else {
 				is2Weeks = false
 			}
 
-//			if !(strings.Contains(class, tditem) && strings.Contains(class, tdsmall){
-//				return
-//			}
+			//			if !(strings.Contains(class, tditem) && strings.Contains(class, tdsmall){
+			//				return
+			//			}
 			if strings.Contains(class, tditem) {
 				number := fromStringToInt(class)
 				subject := parseGroups(text, room)
@@ -311,9 +301,9 @@ func main() {
 					//					fmt.Println(insertedGroups, countSmall0, is2Weeks)
 					//					fmt.Println("==========================================================")
 
-//					fmt.Println(class, ind, numberBeforeSmall0, classBeforeSmall0)
+					//					fmt.Println(class, ind, numberBeforeSmall0, classBeforeSmall0)
 					if !strings.Contains(class, tdsmall+"0") || !strings.Contains(classBeforeSmall0, tditem) {
-//						fmt.Println("SPANS before", num, Spans[num])
+						//						fmt.Println("SPANS before", num, Spans[num])
 						if num == 0 || (Spans[num-1].Start != ind && Spans[num-1].End != ind+numberBeforeSmall0) {
 							span := Interval{Start: ind, End: ind + numberBeforeSmall0}
 							Spans[num] = span
@@ -336,7 +326,7 @@ func main() {
 						allGr = append(allGr, eachColumn[i]...)
 					}
 					//departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
-					if countSmall0 - 1 <= 0 {
+					if countSmall0-1 <= 0 {
 						num++
 					}
 				}
@@ -353,10 +343,9 @@ func main() {
 				}
 				ind = ind + number
 			}
-			
-//			fmt.Println(ind, time, class, text, "\n")
+
+			//			fmt.Println(ind, time, class, text, "\n")
 		}
 	})
-	
-}
 
+}
