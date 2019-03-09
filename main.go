@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"database/sql"
 //	"time"
 
 	"golang.org/x/net/context"
@@ -70,10 +71,6 @@ func saveToken(path string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func addEvent() {
-
-}
-
 func main() {
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
@@ -112,20 +109,86 @@ func main() {
 		}
 	}
 */
-	// Refer to the Go quickstart on how to setup the environment:
-	// https://developers.google.com/calendar/quickstart/go
-	// Change the scope to calendar.CalendarScope and delete any stored credentials.
+	db, err := sql.Open("mysql", DSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+	group := "442"
+	allWeek := dbExplorer(db, group)
 
+	clndr := &calendar.Calendar{
+		Summary: "Shedule",
+	}
+	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
+	fmt.Println(insertedCalendar.Id)
+	fmt.Println("==========")
+//	calendarId := "primary"
+	calendarId := insertedCalendar.Id
+	
+	for _, day := range allWeek {
+		for i, lesson := range day{
+			events, isEmpty := parseAt(lesson, i)
+			if isEmpty {
+				continue
+			}
+			for _, event := range events{
+				event, err = srv.Events.Insert(calendarId, event).Do()
+				if err != nil {
+					log.Fatalf("Unable to create event. %v\n", err)
+				}
+				fmt.Printf("Event created: %s\n", event.HtmlLink)
+			}
+		}
+	}
+
+}
+var spring = "2019-02-07"
+//	autumn := "2019-09-01"
+
+var moscowTime = "+03:00"
+var timeIntervals = map[int]LessonRange{
+		0: {Start: "T9:00:00"+moscowTime, End: "T10:35:00"+moscowTime},
+		1: {Start: "T10:50:00"+moscowTime, End: "T12:25:00"+moscowTime},
+		2: {Start: "T13:30:00"+moscowTime, End: "T15:05:00"+moscowTime},
+		3: {Start: "T15:20:00"+moscowTime, End: "T16:55:00"+moscowTime},
+		4: {Start: "T17:05:00"+moscowTime, End: "T18:40:00"+moscowTime},
+}
+
+func parseAt(subject Subject, i int) ([]calendar.Event, bool){
+	var result = make([]calendar.Event, 0, 2)
+	if subject.Name == "" || subject.Name == "__"{
+		return result, true
+	}
+	re := regexp.MustCompile("(.*)@(.*)")
+	
+	if strings.Contains(subject.Name, "@"){
+		regName := re.FindStringSubmatch(subject.Name)
+		regLector := re.FindStringSubmatch(subject.Lector)
+		regRoom := re.FindStringSubmatch(subject.Room)
+		oddName := regName[1]
+		evenName := regName[2]
+		
+		oddLector := regLector[1]
+		evenLector := regLector[2]
+		
+		oddRoom := regRoom[1]
+		evenRoom := regRoom[2]
+	}
+	
 	event := &calendar.Event{
 		Summary:     "Name of Subject and Lecturer",
 		Location:    "Lomonosov Moscow State University",//Number of room and direction?
 		Description: "Lecturer's name",
 		Start: &calendar.EventDateTime{
-			DateTime: "2019-01-28T22:22:00+03:00",
+			DateTime: spring + timeIntervals[i].Start, // spring ----> season!
 			TimeZone: "Europe/Moscow",
 		},
 		End: &calendar.EventDateTime{
-			DateTime: "2019-01-28T23:23:00+03:00",
+			DateTime: spring + timeIntervals[i].End,
 			TimeZone: "Europe/Moscow",
 		},
 		/*
@@ -151,20 +214,9 @@ func main() {
 			ForceSendFields: []string{"UseDefault", "Overrides"},
 		},
 		Recurrence: []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=20190601"},
-		/*Attendees: []*calendar.EventAttendee{
-			&calendar.EventAttendee{Email: "lpage@example.com"},
-			&calendar.EventAttendee{Email: "sbrin@example.com"},
-		},*/
 	}
 
-	calendarId := "primary"
-	event, err = srv.Events.Insert(calendarId, event).Do()
-	if err != nil {
-		log.Fatalf("Unable to create event. %v\n", err)
-	}
-	fmt.Printf("Event created: %s\n", event.HtmlLink)
+	return result, false
 }
-
-
 
 

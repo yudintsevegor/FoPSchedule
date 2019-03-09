@@ -9,13 +9,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type NLR struct {
-	Name   string
-	Lector string
-	Room   string
-}
 
-func dbExplorer(db *sql.DB) [][]NLR {
+func dbExplorer(db *sql.DB, group string) [][]Subject {
+//func dbExplorer(db *sql.DB) [][]Subject {
 	var tablesNames = make([]string, 0, 1)
 	var tableName string
 
@@ -33,10 +29,10 @@ func dbExplorer(db *sql.DB) [][]NLR {
 		fmt.Println(key)
 	}
 
-	var allWeek = make([][]NLR, 0, 6)
-	for _, key := range tablesNames {
-		var allWeek = make([][]NLR, 0, 6)
-		req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", key)
+	var allWeek = make([][]Subject, 0, 6)
+//	for _, key := range tablesNames {
+//		var allWeek = make([][]Subject, 0, 6)
+		req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", group)
 		rows, err := db.Query(req)
 		for rows.Next() {
 			var rawLes = make([]string, 5)
@@ -47,14 +43,14 @@ func dbExplorer(db *sql.DB) [][]NLR {
 			les := parsePercent(rawLes)
 			allWeek = append(allWeek, les)
 		}
-		fmt.Println("==================================" + key + "==============================")
-		for i, v := range allWeek {
-			fmt.Println("===========", i+1, "========")
-			for _, val := range v {
-				fmt.Println(val)
-			}
-		}
-	}
+//		fmt.Println("==================================" + group + "==============================")
+//		for i, v := range allWeek {
+//			fmt.Println("===========", i+1, "========")
+//			for _, val := range v {
+//				fmt.Println(val)
+//			}
+//		}
+//	}
 
 	return allWeek
 }
@@ -68,15 +64,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_ = dbExplorer(db)
-
+	group := "401"
+	allWeek := dbExplorer(db, group)
+	
+	fmt.Println("==================================" + group + "==============================")
+	for i, v := range allWeek {
+		fmt.Println("===========", i+1, "========")
+		for _, val := range v {
+			fmt.Println(val)
+		}
+	}
 }
 
 var re = regexp.MustCompile("(.*)%(.*)%(.*)")
 
-func parsePercent(arr []string) []NLR {
-	nlr := NLR{}
-	var result = make([]NLR, 0, 5)
+func parsePercent(arr []string) []Subject {
+	nlr := Subject{}
+	var result = make([]Subject, 0, 5)
 	for _, val := range arr {
 		res := re.FindStringSubmatch(val)
 		nlr.Name = res[1]

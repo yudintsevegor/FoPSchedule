@@ -12,21 +12,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type Subject struct {
-	Name   string
-	Lector string
-	Room   string
-}
-
-type Department struct {
-	Number  string
-	Lessons []Subject
-}
-
-type Interval struct {
-	Start int
-	End   int
-}
 
 var re = regexp.MustCompile(`[a-zA-z]([0-9]+)`)
 
