@@ -1,7 +1,8 @@
 package main
 
 import (
-	//	"fmt"
+	"database/sql"
+	"fmt"
 	"log"
 	"regexp"
 	"strconv"
@@ -9,25 +10,26 @@ import (
 	"unicode"
 )
 
-var course = "4"
-var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
+func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text string, nextLine, is2Weeks bool) ([]Department, []string) {
+	departments := st.Departments
+	allGr := st.AllGroups
+	resFromReg := st.ResultFromReqexp
+	insertedGroups := st.InsertedGroups
+	subject := st.Lesson
+	reInterval := st.RegexpInterval
 
-func parseLine(departments []Department, allGr, resFromReg, insertedGroups []string, subject Subject, text string, countSmall0, n int, nextStr, is2Weeks bool) ([]Department, []string) {
 	if len(resFromReg) == 0 {
 		for _, dep := range departments {
 			for _, gr := range allGr {
 				if dep.Number != gr {
 					continue
 				}
-				if !nextStr {
-					dep.Lessons[n] = subject
+				if !nextLine {
+					dep.Lessons[subjectIndex] = subject
 					continue
 				}
-				newSubj := Subject{}
-				newSubj.Lector = dep.Lessons[n].Lector + "@" + subject.Lector
-				newSubj.Room = dep.Lessons[n].Room + "@" + subject.Room
-				newSubj.Name = dep.Lessons[n].Name + "@" + subject.Name
-				dep.Lessons[n] = newSubj
+				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
+				dep.Lessons[subjectIndex] = newSubj
 			}
 		}
 		return departments, insertedGroups
@@ -47,17 +49,13 @@ func parseLine(departments []Department, allGr, resFromReg, insertedGroups []str
 			if dep.Number != gr {
 				continue
 			}
-			if !nextStr {
-				//				fmt.Println(n)
-				dep.Lessons[n] = subject
+			if !nextLine {
+				dep.Lessons[subjectIndex] = subject
 				insertedGroups = append(insertedGroups, gr)
 				continue
 			}
-			newSubj := Subject{}
-			newSubj.Lector = dep.Lessons[n].Lector + "@" + subject.Lector
-			newSubj.Room = dep.Lessons[n].Room + "@" + subject.Room
-			newSubj.Name = dep.Lessons[n].Name + "@" + subject.Name
-			dep.Lessons[n] = newSubj
+			newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
+			dep.Lessons[subjectIndex] = newSubj
 			insertedGroups = append(insertedGroups, gr)
 		}
 	}
@@ -78,29 +76,21 @@ func parseLine(departments []Department, allGr, resFromReg, insertedGroups []str
 			}
 		}
 	}
-	//	fmt.Println("=================inserted groups and mapAllGr=========================================")
-	//	fmt.Println(insertedGroups)
-	//	fmt.Println("==========================================================")
-	//	fmt.Println(mapAllGr)
-	//	fmt.Println("==========================================================")
 
 	for _, dep := range departments {
 		for gr, _ := range mapAllGr {
 			if dep.Number != gr {
 				continue
 			}
-			newSubj := Subject{}
-			if !nextStr {
-				newSubj.Name = "__"
-				newSubj.Room = "__"
-				newSubj.Lector = "__"
-			} else {
-				newSubj.Name = dep.Lessons[n].Name + "@" + "__"
-				newSubj.Room = dep.Lessons[n].Room + "@" + "__"
-				newSubj.Lector = dep.Lessons[n].Lector + "@" + "__"
+			newSubj := Subject{
+				Name:   "__",
+				Lector: "__",
+				Room:   "__",
 			}
-
-			dep.Lessons[n] = newSubj
+			if nextLine {
+				newSubj = newSubj.getNewStruct(dep.Lessons[subjectIndex])
+			}
+			dep.Lessons[subjectIndex] = newSubj
 		}
 	}
 	if countSmall0 <= 0 {
@@ -110,14 +100,56 @@ func parseLine(departments []Department, allGr, resFromReg, insertedGroups []str
 	return departments, insertedGroups
 }
 
+func putToDB(departments []Department, db *sql.DB) {
+	for _, val := range departments {
+		var valuesToDB = make([]interface{}, 0, 1)
+		for _, les := range val.Lessons {
+			value := les.Name + "%" + les.Lector + "%" + les.Room
+			valuesToDB = append(valuesToDB, value)
+		}
+		//		fmt.Println(valuesToDB)
+		req := fmt.Sprintf("INSERT INTO `%v`"+columns+"VALUES"+quesStr, val.Number)
+		statement, err := db.Prepare(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = statement.Exec(valuesToDB...)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(val.Number)
+		fmt.Println("PUT IN TABLE")
+	}
+}
+
+func clean(arr []Department) []Department {
+	var result = make([]Department, len(arr))
+	for i, d := range arr {
+		s := Department{}
+		s.Number = d.Number
+		s.Lessons = make([]Subject, len(d.Lessons))
+		result[i] = s
+	}
+
+	return result
+}
+
 func fromStringToInt(class string) int {
 	num := reNum.FindStringSubmatch(class)[1]
-	number, err := strconv.Atoi(num)
+	numberFromClass, err := strconv.Atoi(num)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return number
+	return numberFromClass
+}
+
+func (st *Subject) getNewStruct(subject Subject) Subject {
+	return Subject{
+		Name:   subject.Name + "@" + st.Name,
+		Lector: subject.Lector + "@" + st.Lector,
+		Room:   subject.Room + "@" + st.Room,
+	}
 }
 
 func parseGroups(text, room string) Subject {
@@ -156,7 +188,6 @@ func parseGroups(text, room string) Subject {
 		return subj
 	}
 
-	//	fmt.Println("TEXT: ", text)
 	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
 
@@ -168,17 +199,4 @@ func parseGroups(text, room string) Subject {
 	subj.Room = room
 
 	return subj
-}
-
-func clean(arr []Department) []Department {
-	var result = make([]Department, len(arr))
-
-	for i, d := range arr {
-		s := Department{}
-		s.Number = d.Number
-		s.Lessons = make([]Subject, len(d.Lessons))
-		result[i] = s
-	}
-
-	return result
 }

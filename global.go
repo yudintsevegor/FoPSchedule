@@ -2,6 +2,7 @@ package main
 
 import (
 	"regexp"
+	"time"
 )
 
 type Subject struct {
@@ -15,6 +16,15 @@ type Department struct {
 	Lessons []Subject
 }
 
+type DataToParsingLine struct {
+	Departments      []Department
+	AllGroups        []string
+	ResultFromReqexp []string
+	InsertedGroups   []string
+	Lesson           Subject
+	RegexpInterval   *regexp.Regexp
+}
+
 type Interval struct {
 	Start int
 	End   int
@@ -25,7 +35,20 @@ type LessonRange struct {
 	End   string
 }
 
+type DataToParsingAt struct {
+	Lesson      Subject
+	Number      int
+	Parity      bool
+	IsAllDay    bool
+	StartTime   string
+	Time        time.Time
+	SemesterEnd string
+}
+
 var (
+	columns = " ( first, second, third, fourth, fifth ) "
+	quesStr = " ( ?, ?, ?, ?, ? ) "
+
 	reUpp  = regexp.MustCompile("([А-Я]){2,}")
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reNum  = regexp.MustCompile(`([0-9]+)`)

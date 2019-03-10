@@ -91,6 +91,7 @@ func main() {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
 
+	// ====================================================================
 	// Get data from database
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
@@ -116,10 +117,27 @@ func main() {
 	calendarId := insertedCalendar.Id
 
 	var isOdd bool
-	year := 2019
-	var month time.Month = 2
-	day := 7
-	t := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	var day int
+	var endSemester string
+
+	var endSummer = "0601"
+	var endWinter = "1231"
+
+	timeNow := time.Now()
+	year := timeNow.Year()
+	month := int(timeNow.Month())
+
+	if month > 0 && month < 8 {
+		month = 2
+		day = 7
+		endSemester = fmt.Sprintf("%v", year) + endSummer
+	} else if month > 7 && month < 13 {
+		month = 9
+		day = 1
+		endSemester = fmt.Sprintf("%v", year) + endWinter
+	}
+
+	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 	firstDay := int(t.Weekday()) - 1
 	t = t.AddDate(0, 0, 7-firstDay)
 
@@ -130,7 +148,15 @@ func main() {
 		}
 		lessonStart := t.Format("2006-01-02")
 		for i, lesson := range allWeek[j] {
-			events, isEmpty := parseAt(lesson, i, isOdd, lessonStart, t)
+			st := DataToParsingAt{
+				Lesson:      lesson,
+				Number:      i,
+				Parity:      isOdd,
+				StartTime:   lessonStart,
+				Time:        t,
+				SemesterEnd: endSemester,
+			}
+			events, isEmpty := st.parseAt()
 			if isEmpty {
 				continue
 			}
@@ -146,17 +172,18 @@ func main() {
 	}
 }
 
-var springStart = "2019-02-07"
-var springEnd = "20190601"
+func (st *DataToParsingAt) createEvent() *calendar.Event {
+	subject := st.Lesson
+	i := st.Number
+	allDay := st.IsAllDay
+	lessonStart := st.StartTime
+	endSemester := st.SemesterEnd
 
-//var autumnEnd = "20191231"
-
-func createEvent(subject Subject, i int, allDay bool, lessonStart string) *calendar.Event {
 	var freq = make([]string, 0, 1)
 	if allDay {
-		freq = []string{"RRULE:FREQ=WEEKLY;UNTIL=" + springEnd}
+		freq = []string{"RRULE:FREQ=WEEKLY;UNTIL=" + endSemester}
 	} else {
-		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=" + springEnd}
+		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=" + endSemester}
 	}
 	color := getColorId(subject.Name)
 	if subject.Lector == "__" {
@@ -167,7 +194,7 @@ func createEvent(subject Subject, i int, allDay bool, lessonStart string) *calen
 	}
 
 	event := &calendar.Event{
-		Summary:     subject.Name + " " + subject.Lector + " " + subject.Room,
+		Summary:     subject.Room + " " + subject.Name + " " + subject.Lector,
 		Location:    "Lomonosov Moscow State University", //Number of room and direction?
 		Description: subject.Lector,
 		Start: &calendar.EventDateTime{
@@ -191,7 +218,12 @@ func createEvent(subject Subject, i int, allDay bool, lessonStart string) *calen
 	return event
 }
 
-func parseAt(subject Subject, i int, isOdd bool, lessonStart string, t time.Time) ([]*calendar.Event, bool) {
+func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
+	subject := st.Lesson
+	isOdd := st.Parity
+	lessonStart := st.StartTime
+	t := st.Time
+
 	var result = make([]*calendar.Event, 0, 2)
 	if subject.Name == "" || subject.Name == "__" {
 		return result, true
@@ -202,6 +234,8 @@ func parseAt(subject Subject, i int, isOdd bool, lessonStart string, t time.Time
 	}
 
 	if strings.Contains(subject.Name, "@") {
+		st.IsAllDay = false
+
 		regName := reAt.FindStringSubmatch(subject.Name)
 		regLector := reAt.FindStringSubmatch(subject.Lector)
 		regRoom := reAt.FindStringSubmatch(subject.Room)
@@ -221,11 +255,15 @@ func parseAt(subject Subject, i int, isOdd bool, lessonStart string, t time.Time
 		}
 
 		if oddSubject.Name != "" && oddSubject.Name != "__" && oddSubject.Name != practice {
-			event := createEvent(oddSubject, i, false, oddLessonStart)
+			st.StartTime = oddLessonStart
+			st.Lesson = oddSubject
+			event := st.createEvent()
 			result = append(result, event)
 		}
 		if evenSubject.Name != "" && evenSubject.Name != "__" && evenSubject.Name != practice {
-			event := createEvent(evenSubject, i, false, evenLessonStart)
+			st.StartTime = evenLessonStart
+			st.Lesson = evenSubject
+			event := st.createEvent()
 			result = append(result, event)
 		}
 		return result, false
@@ -234,7 +272,9 @@ func parseAt(subject Subject, i int, isOdd bool, lessonStart string, t time.Time
 	if subject.Name == practice {
 		return result, true
 	}
-	event := createEvent(subject, i, true, lessonStart)
+
+	st.IsAllDay = true
+	event := st.createEvent()
 	result = append(result, event)
 
 	return result, false

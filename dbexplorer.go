@@ -40,16 +40,31 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 		les := parsePercent(rawLes)
 		allWeek = append(allWeek, les)
 	}
-	//		fmt.Println("==================================" + group + "==============================")
-	//		for i, v := range allWeek {
-	//			fmt.Println("===========", i+1, "========")
-	//			for _, val := range v {
-	//				fmt.Println(val)
-	//			}
-	//		}
-	//	}
-
+	/*
+			fmt.Println("==================================" + group + "==============================")
+			for i, v := range allWeek {
+				fmt.Println("===========", i+1, "========")
+				for _, val := range v {
+					fmt.Println(val)
+				}
+			}
+		}
+	*/
 	return allWeek
+}
+
+func parsePercent(arr []string) []Subject {
+	sbj := Subject{}
+	var result = make([]Subject, 0, 5)
+	for _, val := range arr {
+		res := rePerc.FindStringSubmatch(val)
+		sbj.Name = res[1]
+		sbj.Lector = res[2]
+		sbj.Room = res[3]
+		result = append(result, sbj)
+	}
+
+	return result
 }
 
 //func main() {
@@ -73,17 +88,3 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 //	}
 //}
 //
-
-func parsePercent(arr []string) []Subject {
-	sbj := Subject{}
-	var result = make([]Subject, 0, 5)
-	for _, val := range arr {
-		res := rePerc.FindStringSubmatch(val)
-		sbj.Name = res[1]
-		sbj.Lector = res[2]
-		sbj.Room = res[3]
-		result = append(result, sbj)
-	}
-
-	return result
-}

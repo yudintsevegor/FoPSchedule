@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	res, err := http.Get("http://ras.phys.msu.ru/table/4/2.html")
+	res, err := http.Get("http://ras.phys.msu.ru/table/4/1.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,44 +35,34 @@ func main() {
 		}
 	})
 
+	//Need to expand for all courses
 	course := "4"
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
+	var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
 
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
+
 	var grpsFound int
-
 	var isGroups bool
-	groups := make(map[string]string)
 	var departments = make([]Department, 0, 5)
-	Clss := make(map[string]string)
+	var eachColumn = make(map[int][]string)
 
-	eachColumn := make(map[int][]string)
-
-	indx := 0
+	columnIndex := 0
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
-		if class, ok := std.Attr("class"); ok {
-			Clss[class] = ""
-		}
-
 		if grpsFound > 1 {
 			return
 		}
-		//if set []Subject, 0, 5, program will panic. WHY?
-
 		text := std.Text()
 		if isGroups && text != grpEnd {
 			resFromReg := reGrp.FindAllString(text, -1)
-			eachColumn[indx] = resFromReg
-			indx++
+			eachColumn[columnIndex] = resFromReg
+			columnIndex++
 			for _, val := range resFromReg {
 				depart := Department{Lessons: make([]Subject, 5, 5)}
-				d := Department{Lessons: make([]Subject, 5, 5)}
 				depart.Number = val
-				d.Number = val
 				departments = append(departments, depart)
 			}
-			groups[text] = ""
 		}
 		if text == grpBegin {
 			grpsFound++
@@ -86,6 +76,8 @@ func main() {
 		fmt.Println(key, val)
 	}
 
+	//==============================================
+	//==============================================
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
 		log.Fatal(err)
@@ -119,59 +111,44 @@ func main() {
 			}
 		}
 	}
-
 	fmt.Println("TABLES CREATED")
 
 	var time string
-	var nextStr bool
-	var ind int
 	tditem := "tditem"
 	tdsmall := "tdsmall"
 	tdtime := "tdtime"
+
 	t := "9:00- - -  10:35"
 	var tmp int
+
 	var classBeforeSmall0 string
 	var numberBeforeSmall0 int
 	var countSmall0 int
-	var n int
+
+	var ind int
+	var subjectIndex int
+	var spanIndex int
+
+	var nextLine bool
 	var is2Weeks bool
+
 	var Spans = make([]Interval, 10, 10)
 	var insertedGroups = make([]string, 5)
-	var num int
-	var Saturday int
-	var columns = " ( first, second, third, fourth, fifth ) "
-	var quesStr = " ( ?, ?, ?, ?, ? ) "
 
-	isSat := false
+	var Saturday int
+	isSaturday := false
+
 	doc.Find("td").Each(func(i int, std *goquery.Selection) {
 		text := std.Text()
 
 		if text == grpBegin {
+			// there are 3 <tr> with groups
 			Saturday++
-			fmt.Println("================================================", text, Saturday, "==================================")
 		}
 
-		if Saturday == 3 && !isSat {
-			for _, val := range departments {
-				var valuesToDB = make([]interface{}, 0, 1)
-				fmt.Println(val.Number)
-				for _, les := range val.Lessons {
-					value := les.Name + "%" + les.Lector + "%" + les.Room
-					valuesToDB = append(valuesToDB, value)
-				}
-				fmt.Println(valuesToDB)
-				req := fmt.Sprintf("INSERT INTO `%v`"+columns+"VALUES"+quesStr, val.Number)
-				statement, err := db.Prepare(req)
-				if err != nil {
-					log.Fatal(err)
-				}
-				_, err = statement.Exec(valuesToDB...)
-				if err != nil {
-					log.Fatal(err)
-				}
-				fmt.Println("PUT IN TABLE")
-			}
-			isSat = true
+		if Saturday == 3 && !isSaturday {
+			putToDB(departments, db)
+			isSaturday = true
 		}
 
 		if class, ok := std.Attr("class"); ok {
@@ -182,63 +159,39 @@ func main() {
 			//			if tmp > 2 {
 			//				return
 			//			}
-
-			//			if tmp > 6 || tmp < 5 {
 			if tmp == 3 {
 				fmt.Println("====================================")
 				fmt.Println(tmp, text)
 				fmt.Println("====================================")
-				for _, val := range departments {
-					var valuesToDB = make([]interface{}, 0, 1)
-					fmt.Println(val.Number)
-					for _, les := range val.Lessons {
-						value := les.Name + "%" + les.Lector + "%" + les.Room
-						valuesToDB = append(valuesToDB, value)
-					}
-					fmt.Println(valuesToDB)
-					req := fmt.Sprintf("INSERT INTO `%v`"+columns+"VALUES"+quesStr, val.Number)
-					statement, err := db.Prepare(req)
-					if err != nil {
-						log.Fatal(err)
-					}
-					_, err = statement.Exec(valuesToDB...)
-					if err != nil {
-						log.Fatal(err)
-					}
-					fmt.Println("PUT IN TABLE")
-				}
-				//				fmt.Println(emptyDep, tmp)
-				tmp = 1
-				//				departments = emptyDep
-				n = -1
-				fmt.Println(n)
-				//				fmt.Println(departments, tmp)
+				putToDB(departments, db)
 				departments = clean(departments)
-				//				fmt.Println(departments, tmp)
+				tmp = 1
+				subjectIndex = -1
 			}
 
 			if strings.Contains(class, tdtime) {
 				if time == "" {
-					fmt.Println("====if =============", n, text, "=================")
+					fmt.Println("====if =============", subjectIndex, text, "=================")
 					time = text
-					nextStr = false
+					nextLine = false
 				} else if time == text {
-					fmt.Println("====else if =============", n, text, "=================")
-					num = 0
-					nextStr = true
+					fmt.Println("====else if =============", subjectIndex, text, "=================")
+					nextLine = true
+					spanIndex = 0
 					ind = 0
 					numberBeforeSmall0 = 0
 				} else {
-					fmt.Println("== else ===============", n, text, "=================")
-					num = 0
+					fmt.Println("== else ===============", subjectIndex, text, "=================")
 					Spans = make([]Interval, 10, 10)
-					n++
+					nextLine = false
 					time = text
-					nextStr = false
+					subjectIndex++
+					spanIndex = 0
 					ind = 0
 				}
 			}
 
+			//To count all small0 classes
 			std.Find("td").Each(func(i int, sel *goquery.Selection) {
 				if small, ok := sel.Attr("class"); ok {
 					if strings.Contains(small, "tdsmall0") {
@@ -252,8 +205,8 @@ func main() {
 			}
 
 			if countSmall0 > 0 && class != tdsmall+"0" {
-				number := fromStringToInt(class)
-				numberBeforeSmall0 = number
+				numberFromClass := fromStringToInt(class)
+				numberBeforeSmall0 = numberFromClass
 				classBeforeSmall0 = class
 				return
 			} else if countSmall0 == 0 {
@@ -272,66 +225,70 @@ func main() {
 				is2Weeks = false
 			}
 
-			//			if !(strings.Contains(class, tditem) && strings.Contains(class, tdsmall){
-			//				return
-			//			}
 			if strings.Contains(class, tditem) {
-				number := fromStringToInt(class)
+				numberFromClass := fromStringToInt(class)
 				subject := parseGroups(text, room)
 				resFromReg := reGrp.FindAllString(text, -1)
 
-				for i := ind; i < ind+number; i++ {
+				for i := ind; i < ind+numberFromClass; i++ {
 					allGr = append(allGr, eachColumn[i]...)
 				}
-
-				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0-1, n, nextStr, is2Weeks)
-				ind = ind + number
+				st := DataToParsingLine{
+					Departments:      departments,
+					AllGroups:        allGr,
+					ResultFromReqexp: resFromReg,
+					InsertedGroups:   insertedGroups,
+					Lesson:           subject,
+					RegexpInterval:   reInterval,
+				}
+				departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
+				ind = ind + numberFromClass
 
 			} else if strings.Contains(class, tdsmall) {
-				number := fromStringToInt(class)
+				numberFromClass := fromStringToInt(class)
 				subject := parseGroups(text, room)
 				resFromReg := reGrp.FindAllString(text, -1)
 
 				if numberBeforeSmall0 == 0 {
-					numberBeforeSmall0 = number
+					numberBeforeSmall0 = numberFromClass
 				}
 
-				if !nextStr {
-					//					fmt.Println("==========================inserted groups and countSmall0 and is2Weeks================================")
-					//					fmt.Println(insertedGroups, countSmall0, is2Weeks)
-					//					fmt.Println("==========================================================")
-
-					//					fmt.Println(class, ind, numberBeforeSmall0, classBeforeSmall0)
+				if !nextLine {
 					if !strings.Contains(class, tdsmall+"0") || !strings.Contains(classBeforeSmall0, tditem) {
-						//						fmt.Println("SPANS before", num, Spans[num])
-						if num == 0 || (Spans[num-1].Start != ind && Spans[num-1].End != ind+numberBeforeSmall0) {
+						if spanIndex == 0 || (Spans[spanIndex-1].Start != ind && Spans[spanIndex-1].End != ind+numberBeforeSmall0) {
 							span := Interval{Start: ind, End: ind + numberBeforeSmall0}
-							Spans[num] = span
-							fmt.Println("SPANS!!!!!", num, Spans[num])
-							num++
+							Spans[spanIndex] = span
+							fmt.Println("SPANS!!!!!", spanIndex, Spans[spanIndex])
+							spanIndex++
 						}
 					}
 					for i := ind; i < ind+numberBeforeSmall0; i++ {
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					//departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, n, nextStr)
 				} else { //NEXT STRING
-					fmt.Println("LOL", countSmall0)
 					for _, v := range departments {
 						fmt.Println(v)
 					}
 					is2Weeks = false
-					fmt.Println(Spans[num], num, text)
-					for i := Spans[num].Start; i < Spans[num].End; i++ {
+					fmt.Println(Spans[spanIndex], spanIndex, text)
+					for i := Spans[spanIndex].Start; i < Spans[spanIndex].End; i++ {
 						allGr = append(allGr, eachColumn[i]...)
 					}
-					//departments = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0, n, nextStr)
 					if countSmall0-1 <= 0 {
-						num++
+						spanIndex++
 					}
 				}
-				departments, insertedGroups = parseLine(departments, allGr, resFromReg, insertedGroups, subject, text, countSmall0-1, n, nextStr, is2Weeks)
+				st := DataToParsingLine{
+					Departments:      departments,
+					AllGroups:        allGr,
+					ResultFromReqexp: resFromReg,
+					InsertedGroups:   insertedGroups,
+					Lesson:           subject,
+					RegexpInterval:   reInterval,
+				}
+				departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
 
+				//very strange part...
 				if countSmall0 > 0 {
 					countSmall0--
 					if countSmall0 != 0 {
@@ -341,11 +298,8 @@ func main() {
 					numberBeforeSmall0 = 0
 					return
 				}
-				ind = ind + number
+				ind = ind + numberFromClass
 			}
-
-			//			fmt.Println(ind, time, class, text, "\n")
 		}
 	})
-
 }
