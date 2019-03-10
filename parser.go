@@ -151,155 +151,158 @@ func main() {
 			isSaturday = true
 		}
 
-		if class, ok := std.Attr("class"); ok {
-			if text == t {
-				tmp++
-			}
-			//For debugging. To show only Monday.
-			//			if tmp > 2 {
-			//				return
-			//			}
-			if tmp == 3 {
-				fmt.Println("====================================")
-				fmt.Println(tmp, text)
-				fmt.Println("====================================")
-				putToDB(departments, db)
-				departments = clean(departments)
-				tmp = 1
-				subjectIndex = -1
-			}
+		class, ok := std.Attr("class")
+		if !ok {
+			return
+		}
+		
+		if text == t {
+			tmp++
+		}
+		//For debugging. To show only Monday.
+		//			if tmp > 2 {
+		//				return
+		//			}
+		if tmp == 3 {
+			fmt.Println("====================================")
+			fmt.Println(tmp, text)
+			fmt.Println("====================================")
+			putToDB(departments, db)
+			departments = clean(departments)
+			tmp = 1
+			subjectIndex = -1
+		}
 
-			if strings.Contains(class, tdtime) {
-				if time == "" {
-					fmt.Println("====if =============", subjectIndex, text, "=================")
-					time = text
-					nextLine = false
-				} else if time == text {
-					fmt.Println("====else if =============", subjectIndex, text, "=================")
-					nextLine = true
-					spanIndex = 0
-					ind = 0
-					numberBeforeSmall0 = 0
-				} else {
-					fmt.Println("== else ===============", subjectIndex, text, "=================")
-					Spans = make([]Interval, 10, 10)
-					nextLine = false
-					time = text
-					subjectIndex++
-					spanIndex = 0
-					ind = 0
-				}
-			}
-
-			//To count all small0 classes
-			std.Find("td").Each(func(i int, sel *goquery.Selection) {
-				if small, ok := sel.Attr("class"); ok {
-					if strings.Contains(small, "tdsmall0") {
-						countSmall0++
-					}
-				}
-			})
-
-			if countSmall0 <= 0 {
-				insertedGroups = make([]string, 5)
-			}
-
-			if countSmall0 > 0 && class != tdsmall+"0" {
-				numberFromClass := fromStringToInt(class)
-				numberBeforeSmall0 = numberFromClass
-				classBeforeSmall0 = class
-				return
-			} else if countSmall0 == 0 {
-				classBeforeSmall0 = class
-			}
-
-			var allGr = make([]string, 0, 5)
-			var room string
-			std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
-				room = sel.Text()
-			})
-
-			if strings.Contains(classBeforeSmall0, tditem) && countSmall0 > 0 {
-				is2Weeks = true
+		if strings.Contains(class, tdtime) {
+			if time == "" {
+				fmt.Println("====if =============", subjectIndex, text, "=================")
+				time = text
+				nextLine = false
+			} else if time == text {
+				fmt.Println("====else if =============", subjectIndex, text, "=================")
+				nextLine = true
+				spanIndex = 0
+				ind = 0
+				numberBeforeSmall0 = 0
 			} else {
-				is2Weeks = false
+				fmt.Println("== else ===============", subjectIndex, text, "=================")
+				Spans = make([]Interval, 10, 10)
+				nextLine = false
+				time = text
+				subjectIndex++
+				spanIndex = 0
+				ind = 0
+			}
+		}
+
+		//To count all small0 classes
+		std.Find("td").Each(func(i int, sel *goquery.Selection) {
+			if small, ok := sel.Attr("class"); ok {
+				if strings.Contains(small, "tdsmall0") {
+					countSmall0++
+				}
+			}
+		})
+
+		if countSmall0 <= 0 {
+			insertedGroups = make([]string, 5)
+		}
+
+		if countSmall0 > 0 && class != tdsmall+"0" {
+			numberFromClass := fromStringToInt(class)
+			numberBeforeSmall0 = numberFromClass
+			classBeforeSmall0 = class
+			return
+		} else if countSmall0 == 0 {
+			classBeforeSmall0 = class
+		}
+
+		var allGr = make([]string, 0, 5)
+		var room string
+		std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
+			room = sel.Text()
+		})
+
+		if strings.Contains(classBeforeSmall0, tditem) && countSmall0 > 0 {
+			is2Weeks = true
+		} else {
+			is2Weeks = false
+		}
+
+		if strings.Contains(class, tditem) {
+			numberFromClass := fromStringToInt(class)
+			subject := parseGroups(text, room)
+			resFromReg := reGrp.FindAllString(text, -1)
+
+			for i := ind; i < ind+numberFromClass; i++ {
+				allGr = append(allGr, eachColumn[i]...)
+			}
+			st := DataToParsingLine{
+				Departments:      departments,
+				AllGroups:        allGr,
+				ResultFromReqexp: resFromReg,
+				InsertedGroups:   insertedGroups,
+				Lesson:           subject,
+				RegexpInterval:   reInterval,
+			}
+			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
+			ind = ind + numberFromClass
+
+		} else if strings.Contains(class, tdsmall) {
+			numberFromClass := fromStringToInt(class)
+			subject := parseGroups(text, room)
+			resFromReg := reGrp.FindAllString(text, -1)
+
+			if numberBeforeSmall0 == 0 {
+				numberBeforeSmall0 = numberFromClass
 			}
 
-			if strings.Contains(class, tditem) {
-				numberFromClass := fromStringToInt(class)
-				subject := parseGroups(text, room)
-				resFromReg := reGrp.FindAllString(text, -1)
-
-				for i := ind; i < ind+numberFromClass; i++ {
-					allGr = append(allGr, eachColumn[i]...)
-				}
-				st := DataToParsingLine{
-					Departments:      departments,
-					AllGroups:        allGr,
-					ResultFromReqexp: resFromReg,
-					InsertedGroups:   insertedGroups,
-					Lesson:           subject,
-					RegexpInterval:   reInterval,
-				}
-				departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
-				ind = ind + numberFromClass
-
-			} else if strings.Contains(class, tdsmall) {
-				numberFromClass := fromStringToInt(class)
-				subject := parseGroups(text, room)
-				resFromReg := reGrp.FindAllString(text, -1)
-
-				if numberBeforeSmall0 == 0 {
-					numberBeforeSmall0 = numberFromClass
-				}
-
-				if !nextLine {
-					if !strings.Contains(class, tdsmall+"0") || !strings.Contains(classBeforeSmall0, tditem) {
-						if spanIndex == 0 || (Spans[spanIndex-1].Start != ind && Spans[spanIndex-1].End != ind+numberBeforeSmall0) {
-							span := Interval{Start: ind, End: ind + numberBeforeSmall0}
-							Spans[spanIndex] = span
-							fmt.Println("SPANS!!!!!", spanIndex, Spans[spanIndex])
-							spanIndex++
-						}
-					}
-					for i := ind; i < ind+numberBeforeSmall0; i++ {
-						allGr = append(allGr, eachColumn[i]...)
-					}
-				} else { //NEXT STRING
-					for _, v := range departments {
-						fmt.Println(v)
-					}
-					is2Weeks = false
-					fmt.Println(Spans[spanIndex], spanIndex, text)
-					for i := Spans[spanIndex].Start; i < Spans[spanIndex].End; i++ {
-						allGr = append(allGr, eachColumn[i]...)
-					}
-					if countSmall0-1 <= 0 {
+			if !nextLine {
+				if !strings.Contains(class, tdsmall+"0") || !strings.Contains(classBeforeSmall0, tditem) {
+					if spanIndex == 0 || (Spans[spanIndex-1].Start != ind && Spans[spanIndex-1].End != ind+numberBeforeSmall0) {
+						span := Interval{Start: ind, End: ind + numberBeforeSmall0}
+						Spans[spanIndex] = span
+						fmt.Println("SPANS!!!!!", spanIndex, Spans[spanIndex])
 						spanIndex++
 					}
 				}
-				st := DataToParsingLine{
-					Departments:      departments,
-					AllGroups:        allGr,
-					ResultFromReqexp: resFromReg,
-					InsertedGroups:   insertedGroups,
-					Lesson:           subject,
-					RegexpInterval:   reInterval,
+				for i := ind; i < ind+numberBeforeSmall0; i++ {
+					allGr = append(allGr, eachColumn[i]...)
 				}
-				departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
+			} else { //NEXT STRING
+				for _, v := range departments {
+					fmt.Println(v)
+				}
+				is2Weeks = false
+				fmt.Println(Spans[spanIndex], spanIndex, text)
+				for i := Spans[spanIndex].Start; i < Spans[spanIndex].End; i++ {
+					allGr = append(allGr, eachColumn[i]...)
+				}
+				if countSmall0-1 <= 0 {
+					spanIndex++
+				}
+			}
+			st := DataToParsingLine{
+				Departments:      departments,
+				AllGroups:        allGr,
+				ResultFromReqexp: resFromReg,
+				InsertedGroups:   insertedGroups,
+				Lesson:           subject,
+				RegexpInterval:   reInterval,
+			}
+			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
 
-				//very strange part...
-				if countSmall0 > 0 {
-					countSmall0--
-					if countSmall0 != 0 {
-						return
-					}
-					ind = ind + numberBeforeSmall0
-					numberBeforeSmall0 = 0
+			//very strange part...
+			if countSmall0 > 0 {
+				countSmall0--
+				if countSmall0 != 0 {
 					return
 				}
-				ind = ind + numberFromClass
+				ind = ind + numberBeforeSmall0
+				numberBeforeSmall0 = 0
+				return
 			}
+			ind = ind + numberFromClass
 		}
 	})
 }
