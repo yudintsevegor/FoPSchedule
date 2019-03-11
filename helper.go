@@ -10,7 +10,7 @@ import (
 	"unicode"
 )
 
-func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text string, nextLine, is2Weeks bool) ([]Department, []string) {
+func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text string, nextLine, is2Weeks, isFirstInSmall0 bool) ([]Department, []string) {
 	departments := st.Departments
 	allGr := st.AllGroups
 	resFromReg := st.ResultFromReqexp
@@ -24,8 +24,25 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				if dep.Number != gr {
 					continue
 				}
+				
 				if !nextLine {
-					dep.Lessons[subjectIndex] = subject
+					if countSmall0 >= 0{
+						fmt.Println("$$$$$$$$$", isFirstInSmall0, subjectIndex)
+						newSubj := Subject{}
+						if isFirstInSmall0 {
+							newSubj = subject
+						} else {
+							newSubj = Subject{
+								Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
+								Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
+								Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
+							}
+						}
+						fmt.Println(newSubj)
+						dep.Lessons[subjectIndex] = newSubj
+					} else {
+						dep.Lessons[subjectIndex] = subject
+					}
 					continue
 				}
 				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
@@ -181,13 +198,43 @@ func parseGroups(text, room string) Subject {
 		subj.Lector = "__"
 		return subj
 	}
+	if strings.Contains(text, MFK) {
+		subj.Name = MFK
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
 	if strings.Contains(text, war) {
 		subj.Name = war
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
-
+	if strings.Contains(text, prac201) {
+		subj.Name = text
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, prac){
+		subj.Name = prac
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, specprac) {
+		subj.Name = specprac
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, phys){
+		subj.Name = phys
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	fmt.Println(text)
 	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
 

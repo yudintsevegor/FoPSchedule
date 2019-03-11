@@ -49,15 +49,20 @@ var (
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 
-	reUpp  = regexp.MustCompile("([А-Я]){2,}")
+	reUpp  = regexp.MustCompile("([А-Я]){4,}")
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reNum  = regexp.MustCompile(`([0-9]+)`)
 	reAt   = regexp.MustCompile("(.*)@(.*)")
 
 	practice = "Преддипломная практика"
 	war      = "ВОЕННАЯ ПОДГОТОВКА"
-	mfk      = "МЕЖФАКУЛЬТЕТСКИЕ КУРСЫ"
-
+	MFK      = "МЕЖФАКУЛЬТЕТСКИЕ КУРСЫ"
+	mfk = "Межфакультетские курсы"
+	prac = "Общий физический практикум"
+	specprac = "Специальный физический практикум"
+	prac201 = "Практикум по радиоэлектронике"
+	phys = "Физическая культура"
+	
 	moscowTime    = "+03:00"
 	timeIntervals = map[int]LessonRange{
 		0: {Start: "T9:00:00" + moscowTime, End: "T10:35:00" + moscowTime},

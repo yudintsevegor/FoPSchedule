@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	res, err := http.Get("http://ras.phys.msu.ru/table/4/1.html")
+	res, err := http.Get("http://ras.phys.msu.ru/table/3/1.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func main() {
 	})
 
 	//Need to expand for all courses
-	course := "4"
+	course := "3"
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
 	var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
 
@@ -93,7 +93,7 @@ func main() {
 				  second varchar(255),
 				  third varchar(255),
 				  fourth varchar(255),
-				  fifth varchar(255),
+				  fifth text(255),
 				  PRIMARY KEY (id)
 				) ENGINE=InnoDB DEFAULT CHARSET=utf8; `
 
@@ -131,6 +131,7 @@ func main() {
 
 	var nextLine bool
 	var is2Weeks bool
+	var isFirstInSmall0 bool
 
 	var Spans = make([]Interval, 10, 10)
 	var insertedGroups = make([]string, 5)
@@ -160,9 +161,10 @@ func main() {
 			tmp++
 		}
 		//For debugging. To show only Monday.
-		//			if tmp > 2 {
-		//				return
-		//			}
+//		if tmp > 2 {
+//			return
+//		}
+		
 		if tmp == 3 {
 			fmt.Println("====================================")
 			fmt.Println(tmp, text)
@@ -199,6 +201,7 @@ func main() {
 		std.Find("td").Each(func(i int, sel *goquery.Selection) {
 			if small, ok := sel.Attr("class"); ok {
 				if strings.Contains(small, "tdsmall0") {
+					isFirstInSmall0 = true
 					countSmall0++
 				}
 			}
@@ -209,8 +212,7 @@ func main() {
 		}
 
 		if countSmall0 > 0 && class != tdsmall+"0" {
-			numberFromClass := fromStringToInt(class)
-			numberBeforeSmall0 = numberFromClass
+			numberBeforeSmall0 = fromStringToInt(class)
 			classBeforeSmall0 = class
 			return
 		} else if countSmall0 == 0 {
@@ -245,7 +247,7 @@ func main() {
 				Lesson:           subject,
 				RegexpInterval:   reInterval,
 			}
-			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
+			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
 			ind = ind + numberFromClass
 
 		} else if strings.Contains(class, tdsmall) {
@@ -290,8 +292,8 @@ func main() {
 				Lesson:           subject,
 				RegexpInterval:   reInterval,
 			}
-			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks)
-
+			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
+			isFirstInSmall0 = false
 			//very strange part...
 			if countSmall0 > 0 {
 				countSmall0--

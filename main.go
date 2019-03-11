@@ -102,7 +102,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	group := "442"
+	group := "402"
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
@@ -305,7 +305,7 @@ func getColorId(name string) string {
 	if reUpp.MatchString(name) {
 		return "3"
 	}
-	if strings.Contains(name, "Д/П") || strings.Contains(name, "С/К") {
+	if strings.Contains(name, "Д/П") || strings.Contains(name, "С/К") || strings.Contains(name, "ФТД") {
 		return "2"
 	}
 	return "7"
