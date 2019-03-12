@@ -18,7 +18,7 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 	subject := st.Lesson
 	reInterval := st.RegexpInterval
 
-	fmt.Println(allGr)
+//	fmt.Println(allGr)
 	if len(resFromReg) == 0 {
 		for _, dep := range departments {
 			for _, gr := range allGr {
@@ -30,7 +30,6 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 						dep.Lessons[subjectIndex] = subject
 						continue
 					}
-//					fmt.Println("$$$$$$$$$", isFirstInSmall0, subjectIndex)
 					newSubj := Subject{}
 					if isFirstInSmall0 {
 						newSubj = subject
@@ -41,7 +40,6 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 							Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
 						}
 					}
-//					fmt.Println(newSubj)
 					dep.Lessons[subjectIndex] = newSubj
 					continue
 				}
@@ -61,13 +59,23 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 			resFromReg = append(resFromReg, strconv.Itoa(i))
 		}
 	}
+	
 	for _, dep := range departments {
 		for _, gr := range resFromReg {
 			if dep.Number != gr {
 				continue
 			}
 			if !nextLine {
-				dep.Lessons[subjectIndex] = subject
+				if dep.Lessons[subjectIndex].Name == ""{
+					dep.Lessons[subjectIndex] = subject
+				} else {
+					newSubj := Subject{
+						Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
+						Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
+						Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
+					}
+					dep.Lessons[subjectIndex] = newSubj
+				}
 				insertedGroups = append(insertedGroups, gr)
 				continue
 			}
@@ -223,7 +231,7 @@ func parseGroups(text, room string) Subject {
 		return subj
 	}
 	if strings.Contains(text, specprac) {
-		subj.Name = specprac
+		subj.Name = text 
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj

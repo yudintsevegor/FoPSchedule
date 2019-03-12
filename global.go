@@ -62,7 +62,8 @@ var (
 	specprac = "Специальный физический практикум"
 	prac201 = "Практикум по радиоэлектронике"
 	phys = "Физическая культура"
-	
+
+	astr = "астр."
 	moscowTime    = "+03:00"
 	timeIntervals = map[int]LessonRange{
 		0: {Start: "T9:00:00" + moscowTime, End: "T10:35:00" + moscowTime},

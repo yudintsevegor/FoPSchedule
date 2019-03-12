@@ -14,11 +14,11 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-//		"2": []string{"1"},
-		"1": []string{"1", "2", "3"},
-		"2": []string{"1", "2", "3"},
-		"3": []string{"1", "2"},
-		"4": []string{"1", "2"},
+		"3": []string{"1"},
+//		"1": []string{"1", "2", "3"},
+//		"2": []string{"1", "2", "3"},
+//		"3": []string{"1", "2"},
+//		"4": []string{"1", "2"},
 	}
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
@@ -237,11 +237,28 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 		if strings.Contains(class, tditem) {
 			numberFromClass := fromStringToInt(class)
 			subject := parseGroups(text, room)
-			resFromReg := reGrp.FindAllString(text, -1)
-
 			for i := ind; i < ind+numberFromClass; i++ {
 				allGr = append(allGr, eachColumn[i]...)
 			}
+			
+			var withoutGroups = make([]string, 1)
+			var mapWithoutGr = make(map[string]string)
+			var resFromReg = make([]string, 0, 5)
+			if strings.Contains(text, "без"){
+				withoutGroups = reGrp.FindAllString(text, -1)
+				for _, v := range withoutGroups{
+					mapWithoutGr[v] = ""
+				}
+				for _, v1 := range allGr {
+					if _, ok := mapWithoutGr[v1]; ok{
+						continue
+					}
+					resFromReg = append(resFromReg, v1)
+				}
+			} else {
+				resFromReg = reGrp.FindAllString(text, -1)
+			}
+			
 			st := DataToParsingLine{
 				Departments:      departments,
 				AllGroups:        allGr,
@@ -256,7 +273,8 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 		} else if strings.Contains(class, tdsmall) {
 			numberFromClass := fromStringToInt(class)
 			subject := parseGroups(text, room)
-			resFromReg := reGrp.FindAllString(text, -1)
+			
+//			resFromReg := reGrp.FindAllString(text, -1)
 
 			if numberBeforeSmall0 == 0 {
 				numberBeforeSmall0 = numberFromClass
@@ -276,17 +294,35 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 					allGr = append(allGr, eachColumn[i]...)
 				}
 			} else { //NEXT STRING
-				for _, v := range departments {
-					fmt.Println(v)
-				}
+//				for _, v := range departments {
+//					fmt.Println(v)
+//				}
 				is2Weeks = false
 				var End int
-				if numberBeforeSmall0 == 1{
+				if numberBeforeSmall0 <= Spans[spanIndex].End - Spans[spanIndex].Start {
+					length := len(Spans) - 1
+					isChanged := false
+					for j := length; j >= 0; j--{
+						if j == spanIndex {
+							Spans[j+1] = Interval{Start: Spans[j].Start ,End: numberBeforeSmall0 }
+							Spans[j] = Interval{Start: numberBeforeSmall0, End: Spans[j].End }
+							j++
+							isChanged = true
+							continue
+						}
+						if isChanged {
+							continue
+						}
+						Spans[j+1] = Spans[j]
+					}
 					End = Spans[spanIndex].End
+				} else if numberBeforeSmall0 == 1{
+						End = Spans[spanIndex].End
 				} else {
 					End = numberBeforeSmall0
 				}
-//				fmt.Println("!!!!!!!!NEXT STRING", Spans[spanIndex], spanIndex, text, numberBeforeSmall0)
+				
+				fmt.Println("!!!!!!!!NEXT STRING", Spans[spanIndex], spanIndex,"NBS", numberBeforeSmall0)
 				for i := Spans[spanIndex].Start; i < End; i++ {
 					allGr = append(allGr, eachColumn[i]...)
 				}
@@ -294,6 +330,25 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 					spanIndex++
 				}
 			}
+			
+			var withoutGroups = make([]string, 1)
+			var mapWithoutGr = make(map[string]string)
+			var resFromReg = make([]string, 0, 5)
+			if strings.Contains(text, "без"){
+				withoutGroups = reGrp.FindAllString(text, -1)
+				for _, v := range withoutGroups{
+					mapWithoutGr[v] = ""
+				}
+				for _, v1 := range allGr {
+					if _, ok := mapWithoutGr[v1]; ok{
+						continue
+					}
+					resFromReg = append(resFromReg, v1)
+				}
+			} else {
+				resFromReg = reGrp.FindAllString(text, -1)
+			}
+			
 			st := DataToParsingLine{
 				Departments:      departments,
 				AllGroups:        allGr,
