@@ -18,31 +18,31 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 	subject := st.Lesson
 	reInterval := st.RegexpInterval
 
+	fmt.Println(allGr)
 	if len(resFromReg) == 0 {
 		for _, dep := range departments {
 			for _, gr := range allGr {
 				if dep.Number != gr {
 					continue
 				}
-				
 				if !nextLine {
-					if countSmall0 >= 0{
-						fmt.Println("$$$$$$$$$", isFirstInSmall0, subjectIndex)
-						newSubj := Subject{}
-						if isFirstInSmall0 {
-							newSubj = subject
-						} else {
-							newSubj = Subject{
-								Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
-								Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
-								Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
-							}
-						}
-						fmt.Println(newSubj)
-						dep.Lessons[subjectIndex] = newSubj
-					} else {
+					if countSmall0 < 0 {
 						dep.Lessons[subjectIndex] = subject
+						continue
 					}
+//					fmt.Println("$$$$$$$$$", isFirstInSmall0, subjectIndex)
+					newSubj := Subject{}
+					if isFirstInSmall0 {
+						newSubj = subject
+					} else {
+						newSubj = Subject{
+							Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
+							Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
+							Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
+						}
+					}
+//					fmt.Println(newSubj)
+					dep.Lessons[subjectIndex] = newSubj
 					continue
 				}
 				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])

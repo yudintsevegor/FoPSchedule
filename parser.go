@@ -13,36 +13,48 @@ import (
 )
 
 func main() {
-	res, err := http.Get("http://ras.phys.msu.ru/table/3/1.html")
+	var courses = map[string][]string{
+//		"2": []string{"1"},
+		"1": []string{"1", "2", "3"},
+		"2": []string{"1", "2", "3"},
+		"3": []string{"1", "2"},
+		"4": []string{"1", "2"},
+	}
+	db, err := sql.Open("mysql", DSN)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		log.Fatal("status code error: %d %s", res.StatusCode, res.Status)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	err = db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		if link, ok := s.Attr("href"); ok {
-			fmt.Println(link)
-			text := s.Text()
-			fmt.Println(text)
+	for course, arr := range courses{
+		for _, thread := range arr {
+			res, err := http.Get("http://ras.phys.msu.ru/table/" + course + "/" + thread + ".html")
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer res.Body.Close()
+			if res.StatusCode != 200 {
+				log.Fatal("status code error: %d %s", res.StatusCode, res.Status)
+			}
+			doc, err := goquery.NewDocumentFromReader(res.Body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			parse(course, db, doc)
 		}
-	})
+	}
+}
 
-	//Need to expand for all courses
-	course := "3"
+func parse(course string, db *sql.DB, doc *goquery.Document) {
 	var reGrp = regexp.MustCompile(course + `\d{2}`)
 	var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
 
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
 
+	var err error
 	var grpsFound int
 	var isGroups bool
 	var departments = make([]Department, 0, 5)
@@ -74,17 +86,6 @@ func main() {
 
 	for key, val := range eachColumn {
 		fmt.Println(key, val)
-	}
-
-	//==============================================
-	//==============================================
-	db, err := sql.Open("mysql", DSN)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	partOfReq := `(
@@ -185,7 +186,7 @@ func main() {
 				nextLine = true
 				spanIndex = 0
 				ind = 0
-				numberBeforeSmall0 = 0
+//				numberBeforeSmall0 = 0
 			} else {
 				fmt.Println("== else ===============", subjectIndex, text, "=================")
 				Spans = make([]Interval, 10, 10)
@@ -193,6 +194,7 @@ func main() {
 				time = text
 				subjectIndex++
 				spanIndex = 0
+//				numberBeforeSmall0 = 0
 				ind = 0
 			}
 		}
@@ -216,9 +218,10 @@ func main() {
 			classBeforeSmall0 = class
 			return
 		} else if countSmall0 == 0 {
+			numberBeforeSmall0 = 0
 			classBeforeSmall0 = class
 		}
-
+		
 		var allGr = make([]string, 0, 5)
 		var room string
 		std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
@@ -265,6 +268,7 @@ func main() {
 						span := Interval{Start: ind, End: ind + numberBeforeSmall0}
 						Spans[spanIndex] = span
 						fmt.Println("SPANS!!!!!", spanIndex, Spans[spanIndex])
+						fmt.Println("numberBeforeSmall0", numberBeforeSmall0)
 						spanIndex++
 					}
 				}
@@ -276,8 +280,14 @@ func main() {
 					fmt.Println(v)
 				}
 				is2Weeks = false
-				fmt.Println(Spans[spanIndex], spanIndex, text)
-				for i := Spans[spanIndex].Start; i < Spans[spanIndex].End; i++ {
+				var End int
+				if numberBeforeSmall0 == 1{
+					End = Spans[spanIndex].End
+				} else {
+					End = numberBeforeSmall0
+				}
+//				fmt.Println("!!!!!!!!NEXT STRING", Spans[spanIndex], spanIndex, text, numberBeforeSmall0)
+				for i := Spans[spanIndex].Start; i < End; i++ {
 					allGr = append(allGr, eachColumn[i]...)
 				}
 				if countSmall0-1 <= 0 {
@@ -308,3 +318,4 @@ func main() {
 		}
 	})
 }
+

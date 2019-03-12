@@ -102,7 +102,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	group := "402"
+	group := "442"
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
@@ -229,7 +229,7 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 		return result, true
 	}
 
-	if subject.Name == war || subject.Name == mfk {
+	if subject.Name == war || subject.Name == MFK {
 		return result, true
 	}
 
