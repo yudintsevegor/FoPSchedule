@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"regexp"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -102,7 +103,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	group := "207"
+	group := "403"
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
@@ -172,6 +173,27 @@ func main() {
 	}
 }
 
+func (st *Subject) parseSharp() ([]Subject){
+	count := strings.Count(st.Name, "#")
+	str := strings.Repeat("(.*)#", count) + "(.*)"
+	reSharp := regexp.MustCompile(str)
+	names := reSharp.FindStringSubmatch(st.Name)[1:count+2]
+	lectors := reSharp.FindStringSubmatch(st.Lector)[1:count+2]
+	rooms := reSharp.FindStringSubmatch(st.Room)[1:count+2]
+	
+	var subjects = make([]Subject, 0, 1)
+	for i := 0; i < len(names); i++{
+		subj := Subject{
+			Name: names[i],
+			Room: rooms[i],
+			Lector: lectors[i],
+			Parity: st.Parity,
+		}
+		subjects = append(subjects, subj)
+	}
+	return subjects
+}
+
 func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 	subject := st.Lesson
 	isOdd := st.Parity
@@ -187,15 +209,13 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 		return result, true
 	}
 
+	
 	if strings.Contains(subject.Name, "@") {
 		st.IsAllDay = false
 
 		regName := reAt.FindStringSubmatch(subject.Name)
 		regLector := reAt.FindStringSubmatch(subject.Lector)
 		regRoom := reAt.FindStringSubmatch(subject.Room)
-
-		oddSubject := Subject{Name: regName[1], Lector: regLector[1], Room: regRoom[1]}
-		evenSubject := Subject{Name: regName[2], Lector: regLector[2], Room: regRoom[2]}
 
 		var oddLessonStart string
 		var evenLessonStart string
@@ -207,30 +227,46 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 			oddLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
 			evenLessonStart = lessonStart
 		}
+		
+		oddSubject := Subject{Name: regName[1], Lector: regLector[1], Room: regRoom[1], Parity: oddLessonStart}
+		evenSubject := Subject{Name: regName[2], Lector: regLector[2], Room: regRoom[2], Parity: evenLessonStart}
 
-		if oddSubject.Name != "" && oddSubject.Name != "__" && oddSubject.Name != practice {
-			st.StartTime = oddLessonStart
-			st.Lesson = oddSubject
-			event := st.createEvent()
-			result = append(result, event)
-		}
-		if evenSubject.Name != "" && evenSubject.Name != "__" && evenSubject.Name != practice {
-			st.StartTime = evenLessonStart
-			st.Lesson = evenSubject
-			event := st.createEvent()
-			result = append(result, event)
+		var arr = []Subject{oddSubject, evenSubject}
+		for _, subj := range arr {
+			var fromSharp = make([]Subject, 0, 1)
+			if strings.Contains(subj.Name, "#"){
+				fromSharp = subj.parseSharp()
+			} else {
+				fromSharp = append(fromSharp, subj)
+			}
+			for _, v := range fromSharp{
+				if v.Name != "" && v.Name != "__" && v.Name != practice {
+					st.StartTime = v.Parity
+					st.Lesson = v
+					event := st.createEvent()
+					result = append(result, event)
+				}
+			}
 		}
 		return result, false
 	}
 
+	var fromSharp = make([]Subject, 0, 1)
 	if subject.Name == practice {
 		return result, true
 	}
-
+	if strings.Contains(subject.Name, "#"){
+		fromSharp = subject.parseSharp()
+	} else {
+		fromSharp = append(fromSharp, subject)
+	}
 	st.IsAllDay = true
-	event := st.createEvent()
-	result = append(result, event)
-
+	for _, v := range fromSharp{
+		st.Lesson = v
+		event := st.createEvent()
+		result = append(result, event)
+	}
+	
 	return result, false
 }
 
@@ -247,14 +283,19 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 	} else {
 		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=" + endSemester}
 	}
-	color := getColorId(subject.Name)
+	color := getColorId(subject.Name, subject.Room)
 	if subject.Lector == "__" {
 		subject.Lector = ""
 	}
 	if subject.Room == "__" {
 		subject.Room = ""
 	}
-
+	if _, isNorth := north[subject.Room]; isNorth{
+		subject.Room = subject.Room + "(СЕВЕР)"
+	}
+	if _, isSouth := south[subject.Room]; isSouth{
+		subject.Room = subject.Room + "(ЮГ)"
+	}
 	event := &calendar.Event{
 		Summary:     subject.Room + " " + subject.Name + " " + subject.Lector,
 		Location:    "Lomonosov Moscow State University", //Number of room and direction?
@@ -280,7 +321,7 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 	return event
 }
 
-func getColorId(name string) string {
+func getColorId(name, room string) string {
 	/*
 		ColorId : Color
 		1 : lavender
@@ -302,7 +343,8 @@ func getColorId(name string) string {
 	} else if name == mfk || name == MFKabbr || name == MFK {
 		return "4"
 	}
-	if reUpp.MatchString(name) {
+	_, isLecture := audience[room]
+	if reUpp.MatchString(name) || isLecture {
 		return "3"
 	}
 	if strings.Contains(name, "с/к") || strings.Contains(name, "НИС") || strings.Contains(name, "ДМП") || strings.Contains(name, "Д/п") || strings.Contains(name, "Д/П") || strings.Contains(name, "C/К") || strings.Contains(name, "С/К") || strings.Contains(name, "ФТД") {

@@ -39,6 +39,9 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 							Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
 							Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
 						}
+//						fmt.Println("NEW NAME", newSubj.Name)
+//						fmt.Println("NEW ROOM", newSubj.Room)
+//						fmt.Println("NEW LECTOR", newSubj.Lector)
 					}
 					dep.Lessons[subjectIndex] = newSubj
 					continue
@@ -278,7 +281,8 @@ func parseGroups(text, room string) Subject {
 	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
 
-	rSubj := regexp.MustCompile(`([^0-9\-]*) ` + room + " " + Lect)
+	rSubj := regexp.MustCompile(`([^0-9]*) ` + room + " " + Lect)
+//	rSubj := regexp.MustCompile(`([^0-9\-]*) ` + room + " " + Lect)
 	Subj := rSubj.FindStringSubmatch(text)[1]
 
 	subj.Name = Subj

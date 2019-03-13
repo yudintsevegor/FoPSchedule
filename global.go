@@ -9,6 +9,7 @@ type Subject struct {
 	Name   string
 	Lector string
 	Room   string
+	Parity string
 }
 
 type Department struct {
@@ -67,9 +68,52 @@ var (
 	research = "Научно-исследовательская практика"
 	astroProblems = "Современные проблемы астрономии"
 	NIS = "НИС"
+	astr = "астр."
 
 	cases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
-	astr = "астр."
+
+	south = map[string]string{
+		"5-23": "",
+		"5-24": "",
+		"5-25": "",
+		"5-26": "",
+		"5-27": "",
+		"5-38": "",
+		"5-39": "",
+		"5-40": "",
+		"5-41": "",
+		"5-42": "",
+		"5-18": "",
+		"5-19": "",
+	}
+	north = map[string]string{
+		"5-33": "",
+		"5-34": "",
+		"5-35": "",
+		"5-36": "",
+		"5-37": "",
+		"5-44": "",
+		"5-45": "",
+		"5-46": "",
+		"5-47": "",
+		"5-48": "",
+		"5-49": "",
+		"5-50": "",
+		"5-51": "",
+		"5-52": "",
+		"5-53": "",
+		"5-61": "",
+		"5-62": "",
+		"5-68": "",
+		"Л.каб.": "",
+	}
+	
+	audience = map[string]string{
+		"СФА": "",
+		"ЮФА": "",
+		"ЦФА": "",
+		"Ауд. им. Хохлова": "",
+	}
 	moscowTime    = "+03:00"
 	timeIntervals = map[int]LessonRange{
 		0: {Start: "T9:00:00" + moscowTime, End: "T10:35:00" + moscowTime},
