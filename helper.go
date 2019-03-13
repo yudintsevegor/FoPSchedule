@@ -69,12 +69,14 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				if dep.Lessons[subjectIndex].Name == ""{
 					dep.Lessons[subjectIndex] = subject
 				} else {
-					newSubj := Subject{
-						Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
-						Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
-						Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
+					if subject.Name != dep.Lessons[subjectIndex].Name && dep.Lessons[subjectIndex].Room != subject.Room && subject.Lector != dep.Lessons[subjectIndex].Lector {
+						newSubj := Subject{
+							Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
+							Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
+							Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
+						}
+						dep.Lessons[subjectIndex] = newSubj
 					}
-					dep.Lessons[subjectIndex] = newSubj
 				}
 				insertedGroups = append(insertedGroups, gr)
 				continue
@@ -212,8 +214,20 @@ func parseGroups(text, room string) Subject {
 		subj.Lector = "__"
 		return subj
 	}
+	if strings.Contains(text, MFKabbr) {
+		subj.Name = MFKabbr
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
 	if strings.Contains(text, war) {
 		subj.Name = war
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, WAR) {
+		subj.Name = WAR
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
@@ -238,6 +252,24 @@ func parseGroups(text, room string) Subject {
 	}
 	if strings.Contains(text, phys){
 		subj.Name = phys
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, research){
+		subj.Name = research
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, astroProblems){
+		subj.Name = astroProblems
+		subj.Room = "__"
+		subj.Lector = "__"
+		return subj
+	}
+	if strings.Contains(text, NIS){
+		subj.Name = NIS
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj

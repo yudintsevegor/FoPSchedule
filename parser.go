@@ -14,11 +14,12 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-		"3": []string{"1"},
-//		"1": []string{"1", "2", "3"},
-//		"2": []string{"1", "2", "3"},
-//		"3": []string{"1", "2"},
-//		"4": []string{"1", "2"},
+		"1": []string{"1", "2", "3"},
+		"2": []string{"1", "2", "3"},
+		"3": []string{"1", "2"},
+		"4": []string{"1", "2"},
+		"5": []string{"1", "2"},
+		"6": []string{"1", "2"},
 	}
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
@@ -48,8 +49,15 @@ func main() {
 }
 
 func parse(course string, db *sql.DB, doc *goquery.Document) {
-	var reGrp = regexp.MustCompile(course + `\d{2}`)
-	var reInterval = regexp.MustCompile(`(` + course + `\d{2})\s*\-\s*` + `(` + course + `\d{2})`)
+	if course == "5"{
+		course = "[1,5]"
+	}
+	if course == "6"{
+		course = "[2,6]"
+	}
+	
+	var reGrp = regexp.MustCompile(course + `\d{2}М*`)
+	var reInterval = regexp.MustCompile(`(` + course + `\d{2}М*)\s*\-\s*` + `(` + course + `\d{2}М*)`)
 
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -87,7 +95,6 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 	for key, val := range eachColumn {
 		fmt.Println(key, val)
 	}
-
 	partOfReq := `(
 				  id int(11) NOT NULL AUTO_INCREMENT,
 				  first varchar(255),
@@ -299,14 +306,14 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 //				}
 				is2Weeks = false
 				var End int
-				if numberBeforeSmall0 <= Spans[spanIndex].End - Spans[spanIndex].Start {
+				if numberBeforeSmall0 < Spans[spanIndex].End - Spans[spanIndex].Start {
 					length := len(Spans) - 1
 					isChanged := false
+					Spans = append(Spans, Interval{Start: 0, End: 0})
 					for j := length; j >= 0; j--{
 						if j == spanIndex {
-							Spans[j+1] = Interval{Start: Spans[j].Start ,End: numberBeforeSmall0 }
-							Spans[j] = Interval{Start: numberBeforeSmall0, End: Spans[j].End }
-							j++
+							Spans[j+1] = Interval{Start: Spans[j].Start + 1, End: Spans[j].End}
+							Spans[j] = Interval{Start: Spans[j].Start, End: Spans[j].Start + 1}
 							isChanged = true
 							continue
 						}

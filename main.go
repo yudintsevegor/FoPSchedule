@@ -102,7 +102,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	group := "442"
+	group := "207"
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
@@ -172,52 +172,6 @@ func main() {
 	}
 }
 
-func (st *DataToParsingAt) createEvent() *calendar.Event {
-	subject := st.Lesson
-	i := st.Number
-	allDay := st.IsAllDay
-	lessonStart := st.StartTime
-	endSemester := st.SemesterEnd
-
-	var freq = make([]string, 0, 1)
-	if allDay {
-		freq = []string{"RRULE:FREQ=WEEKLY;UNTIL=" + endSemester}
-	} else {
-		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=" + endSemester}
-	}
-	color := getColorId(subject.Name)
-	if subject.Lector == "__" {
-		subject.Lector = ""
-	}
-	if subject.Room == "__" {
-		subject.Room = ""
-	}
-
-	event := &calendar.Event{
-		Summary:     subject.Room + " " + subject.Name + " " + subject.Lector,
-		Location:    "Lomonosov Moscow State University", //Number of room and direction?
-		Description: subject.Lector,
-		Start: &calendar.EventDateTime{
-			DateTime: lessonStart + timeIntervals[i].Start, // spring ----> season
-			TimeZone: "Europe/Moscow",
-		},
-		End: &calendar.EventDateTime{
-			DateTime: lessonStart + timeIntervals[i].End,
-			TimeZone: "Europe/Moscow",
-		},
-		ColorId: color,
-		Reminders: &calendar.EventReminders{
-			UseDefault: false,
-			Overrides:  []*calendar.EventReminder{},
-			//ForceSendFields is required, if you dont want to set up notifications, because
-			//by default, empty values are omitted from API requests
-			ForceSendFields: []string{"UseDefault", "Overrides"},
-		},
-		Recurrence: freq,
-	}
-	return event
-}
-
 func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 	subject := st.Lesson
 	isOdd := st.Parity
@@ -229,7 +183,7 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 		return result, true
 	}
 
-	if subject.Name == war || subject.Name == MFK {
+	if strings.Contains(cases, subject.Name){
 		return result, true
 	}
 
@@ -280,6 +234,52 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 	return result, false
 }
 
+func (st *DataToParsingAt) createEvent() *calendar.Event {
+	subject := st.Lesson
+	i := st.Number
+	allDay := st.IsAllDay
+	lessonStart := st.StartTime
+	endSemester := st.SemesterEnd
+
+	var freq = make([]string, 0, 1)
+	if allDay {
+		freq = []string{"RRULE:FREQ=WEEKLY;UNTIL=" + endSemester}
+	} else {
+		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=" + endSemester}
+	}
+	color := getColorId(subject.Name)
+	if subject.Lector == "__" {
+		subject.Lector = ""
+	}
+	if subject.Room == "__" {
+		subject.Room = ""
+	}
+
+	event := &calendar.Event{
+		Summary:     subject.Room + " " + subject.Name + " " + subject.Lector,
+		Location:    "Lomonosov Moscow State University", //Number of room and direction?
+		Description: subject.Lector,
+		Start: &calendar.EventDateTime{
+			DateTime: lessonStart + timeIntervals[i].Start, // spring ----> season
+			TimeZone: "Europe/Moscow",
+		},
+		End: &calendar.EventDateTime{
+			DateTime: lessonStart + timeIntervals[i].End,
+			TimeZone: "Europe/Moscow",
+		},
+		ColorId: color,
+		Reminders: &calendar.EventReminders{
+			UseDefault: false,
+			Overrides:  []*calendar.EventReminder{},
+			//ForceSendFields is required, if you dont want to set up notifications, because
+			//by default, empty values are omitted from API requests
+			ForceSendFields: []string{"UseDefault", "Overrides"},
+		},
+		Recurrence: freq,
+	}
+	return event
+}
+
 func getColorId(name string) string {
 	/*
 		ColorId : Color
@@ -299,13 +299,13 @@ func getColorId(name string) string {
 		return "11"
 	} else if name == practice {
 		return "10"
-	} else if name == mfk {
+	} else if name == mfk || name == MFKabbr || name == MFK {
 		return "4"
 	}
 	if reUpp.MatchString(name) {
 		return "3"
 	}
-	if strings.Contains(name, "Д/П") || strings.Contains(name, "С/К") || strings.Contains(name, "ФТД") {
+	if strings.Contains(name, "с/к") || strings.Contains(name, "НИС") || strings.Contains(name, "ДМП") || strings.Contains(name, "Д/п") || strings.Contains(name, "Д/П") || strings.Contains(name, "C/К") || strings.Contains(name, "С/К") || strings.Contains(name, "ФТД") {
 		return "2"
 	}
 	return "7"

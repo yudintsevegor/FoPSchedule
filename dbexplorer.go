@@ -31,6 +31,9 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 	//		var allWeek = make([][]Subject, 0, 6)
 	req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", group)
 	rows, err := db.Query(req)
+	if err != nil{
+		log.Fatal(err)
+	}
 	for rows.Next() {
 		var rawLes = make([]string, 5)
 		err = rows.Scan(&rawLes[0], &rawLes[1], &rawLes[2], &rawLes[3], &rawLes[4])
