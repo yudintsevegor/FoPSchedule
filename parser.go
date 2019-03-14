@@ -14,7 +14,7 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-		"2": []string{"2"},
+		"3": []string{"2"},
 //		"1": []string{"1", "2", "3"},
 //		"2": []string{"1", "2", "3"},
 //		"3": []string{"1", "2"},
@@ -57,8 +57,8 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 		course = "[2,6]"
 	}
 	
-	var reGrp = regexp.MustCompile(course + `\d{2}М*`)
-	var reInterval = regexp.MustCompile(`(` + course + `\d{2}М*)\s*\-\s*` + `(` + course + `\d{2}М*)`)
+	var reGrp = regexp.MustCompile(course + `\d{2}[М,Б,а,б]*`)
+	var reInterval = regexp.MustCompile(`(` + course + `\d{2}[М,Б,а,б]*)\s*\-\s*` + `(` + course + `\d{2}[М,Б,а,б]*)`)
 
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -76,7 +76,15 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 		}
 		text := std.Text()
 		if isGroups && text != grpEnd {
-			resFromReg := reGrp.FindAllString(text, -1)
+			tmpSlice := reGrp.FindAllString(text, -1)
+			resFromReg := make([]string, 0, len(tmpSlice))
+			for _, gr := range tmpSlice{
+				if subgr, ok := subGroups[gr]; ok{
+					resFromReg = append(resFromReg, subgr...)
+					continue
+				}
+				resFromReg = append(resFromReg, gr)
+			}
 			eachColumn[columnIndex] = resFromReg
 			columnIndex++
 			for _, val := range resFromReg {
@@ -98,10 +106,10 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 	}
 	partOfReq := `(
 				  id int(11) NOT NULL AUTO_INCREMENT,
-				  first varchar(255),
-				  second varchar(255),
-				  third varchar(255),
-				  fourth varchar(255),
+				  first text(255),
+				  second text(255),
+				  third text(255),
+				  fourth text(255),
 				  fifth text(255),
 				  PRIMARY KEY (id)
 				) ENGINE=InnoDB DEFAULT CHARSET=utf8; `

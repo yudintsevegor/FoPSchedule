@@ -53,7 +53,7 @@ var (
 	reUpp  = regexp.MustCompile("([А-Я]){5,}")
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reAt   = regexp.MustCompile("(.*)@(.*)")
-	reNum  = regexp.MustCompile(`([0-9]+М*)`)
+	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
 
 	practice = "Преддипломная практика"
 	WAR      = "ВОЕННАЯ ПОДГОТОВКА"
@@ -72,6 +72,17 @@ var (
 
 	cases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
 
+	subGroups = map[string][]string{
+		"341": []string{"341а", "341б"},
+		"441": []string{"441а", "441б"},
+		"141М": []string{"141а", "141б"},
+		"241М": []string{"241а", "241б"},
+		"316": []string{"316а", "316б"},
+		"416": []string{"416а", "416б"},
+		"116М": []string{"116Ма", "116Мб"},
+		"216М": []string{"216Ма", "216Мб"},
+	}
+	
 	south = map[string]string{
 		"5-23": "",
 		"5-24": "",
