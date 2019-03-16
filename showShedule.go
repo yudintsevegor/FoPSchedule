@@ -76,11 +76,11 @@ func main() {
 	}
 	_ = dbExplorer(db)
 
-//	fmt.Println("==================================" + group + "==============================")
-//	for i, v := range allWeek {
-//		fmt.Println("===========", i+1, "========")
-//		for _, val := range v {
-//			fmt.Println(val)
-//		}
-//	}
+	//	fmt.Println("==================================" + group + "==============================")
+	//	for i, v := range allWeek {
+	//		fmt.Println("===========", i+1, "========")
+	//		for _, val := range v {
+	//			fmt.Println(val)
+	//		}
+	//	}
 }

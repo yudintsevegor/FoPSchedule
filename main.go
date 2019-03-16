@@ -2,76 +2,17 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
-	"regexp"
 
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 )
-
-// Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
-	// The file token.json stores the user's access and refresh tokens, and is
-	// created automatically when the authorization flow completes for the first
-	// time.
-	tokFile := "token.json"
-	tok, err := tokenFromFile(tokFile)
-	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
-	}
-	return config.Client(context.Background(), tok)
-}
-
-// Request a token from the web, then returns the retrieved token.
-func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
-	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
-
-	var authCode string
-	if _, err := fmt.Scan(&authCode); err != nil {
-		log.Fatalf("Unable to read authorization code: %v", err)
-	}
-
-	tok, err := config.Exchange(context.TODO(), authCode)
-	if err != nil {
-		log.Fatalf("Unable to retrieve token from web: %v", err)
-	}
-	return tok
-}
-
-// Retrieves a token from a local file.
-func tokenFromFile(file string) (*oauth2.Token, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	tok := &oauth2.Token{}
-	err = json.NewDecoder(f).Decode(tok)
-	return tok, err
-}
-
-// Saves a token to a file path.
-func saveToken(path string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", path)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		log.Fatalf("Unable to cache oauth token: %v", err)
-	}
-	defer f.Close()
-	json.NewEncoder(f).Encode(token)
-}
 
 func main() {
 	b, err := ioutil.ReadFile("credentials.json")
@@ -92,6 +33,8 @@ func main() {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
 
+	_ = os.Remove("token.json")
+	
 	// ====================================================================
 	// Get data from database
 	db, err := sql.Open("mysql", DSN)
@@ -103,8 +46,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	group := "307"
-	
+	fmt.Println("Put your group: ")
+	var group string
+	fmt.Fscan(os.Stdin, &group)
+//	group := "142М"
+
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
@@ -174,19 +120,19 @@ func main() {
 	}
 }
 
-func (st *Subject) parseSharp() ([]Subject){
+func (st *Subject) parseSharp() []Subject {
 	count := strings.Count(st.Name, "#")
 	str := strings.Repeat("(.*)#", count) + "(.*)"
 	reSharp := regexp.MustCompile(str)
-	names := reSharp.FindStringSubmatch(st.Name)[1:count+2]
-	lectors := reSharp.FindStringSubmatch(st.Lector)[1:count+2]
-	rooms := reSharp.FindStringSubmatch(st.Room)[1:count+2]
-	
+	names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
+	lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
+	rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]
+
 	var subjects = make([]Subject, 0, 1)
-	for i := 0; i < len(names); i++{
+	for i := 0; i < len(names); i++ {
 		subj := Subject{
-			Name: names[i],
-			Room: rooms[i],
+			Name:   names[i],
+			Room:   rooms[i],
 			Lector: lectors[i],
 			Parity: st.Parity,
 		}
@@ -206,11 +152,10 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 		return result, true
 	}
 
-	if strings.Contains(cases, subject.Name){
+	if strings.Contains(cases, subject.Name) {
 		return result, true
 	}
 
-	
 	if strings.Contains(subject.Name, "@") {
 		st.IsAllDay = false
 
@@ -228,19 +173,19 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 			oddLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
 			evenLessonStart = lessonStart
 		}
-		
+
 		oddSubject := Subject{Name: regName[1], Lector: regLector[1], Room: regRoom[1], Parity: oddLessonStart}
 		evenSubject := Subject{Name: regName[2], Lector: regLector[2], Room: regRoom[2], Parity: evenLessonStart}
 
 		var arr = []Subject{oddSubject, evenSubject}
 		for _, subj := range arr {
 			var fromSharp = make([]Subject, 0, 1)
-			if strings.Contains(subj.Name, "#"){
+			if strings.Contains(subj.Name, "#") {
 				fromSharp = subj.parseSharp()
 			} else {
 				fromSharp = append(fromSharp, subj)
 			}
-			for _, v := range fromSharp{
+			for _, v := range fromSharp {
 				if v.Name != "" && v.Name != "__" && v.Name != practice {
 					st.StartTime = v.Parity
 					st.Lesson = v
@@ -256,18 +201,18 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 	if subject.Name == practice {
 		return result, true
 	}
-	if strings.Contains(subject.Name, "#"){
+	if strings.Contains(subject.Name, "#") {
 		fromSharp = subject.parseSharp()
 	} else {
 		fromSharp = append(fromSharp, subject)
 	}
 	st.IsAllDay = true
-	for _, v := range fromSharp{
+	for _, v := range fromSharp {
 		st.Lesson = v
 		event := st.createEvent()
 		result = append(result, event)
 	}
-	
+
 	return result, false
 }
 
@@ -291,10 +236,10 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 	if subject.Room == "__" {
 		subject.Room = ""
 	}
-	if _, isNorth := north[subject.Room]; isNorth{
+	if _, isNorth := north[subject.Room]; isNorth {
 		subject.Room = subject.Room + "(СЕВЕР)"
 	}
-	if _, isSouth := south[subject.Room]; isSouth{
+	if _, isSouth := south[subject.Room]; isSouth {
 		subject.Room = subject.Room + "(ЮГ)"
 	}
 	event := &calendar.Event{

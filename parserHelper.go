@@ -9,19 +9,21 @@ import (
 	"strings"
 	"unicode"
 )
-func (st *Subject) parseSharp() ([]Subject){
+
+func (st *Subject) parseSharp() []Subject {
 	count := strings.Count(st.Name, "#")
 	str := strings.Repeat("(.*)#", count) + "(.*)"
 	reSharp := regexp.MustCompile(str)
-	names := reSharp.FindStringSubmatch(st.Name)[1:count+2]
-	lectors := reSharp.FindStringSubmatch(st.Lector)[1:count+2]
-	rooms := reSharp.FindStringSubmatch(st.Room)[1:count+2]
-	
+
+	names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
+	lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
+	rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]
+
 	var subjects = make([]Subject, 0, 1)
-	for i := 0; i < len(names); i++{
+	for i := 0; i < len(names); i++ {
 		subj := Subject{
-			Name: names[i],
-			Room: rooms[i],
+			Name:   names[i],
+			Room:   rooms[i],
 			Lector: lectors[i],
 			Parity: st.Parity,
 		}
@@ -38,7 +40,6 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 	subject := st.Lesson
 	reInterval := st.RegexpInterval
 
-//	fmt.Println(allGr)
 	if len(resFromReg) == 0 {
 		for _, dep := range departments {
 			for _, gr := range allGr {
@@ -54,20 +55,33 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 					if isFirstInSmall0 {
 						newSubj = subject
 					} else {
-						newSubj = Subject{
-							Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
-							Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
-							Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
-						}
-//						fmt.Println("NEW NAME", newSubj.Name)
-//						fmt.Println("NEW ROOM", newSubj.Room)
-//						fmt.Println("NEW LECTOR", newSubj.Lector)
+						newSubj = subject.getNewStruct(dep.Lessons[subjectIndex], "#")
 					}
 					dep.Lessons[subjectIndex] = newSubj
 					continue
 				}
-				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
-				dep.Lessons[subjectIndex] = newSubj
+
+				// new part
+				if !strings.Contains(dep.Lessons[subjectIndex].Name, "@") {
+					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
+					dep.Lessons[subjectIndex] = newSubj
+					insertedGroups = append(insertedGroups, gr)
+					continue
+				}
+
+				regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
+				regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
+				regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+
+				if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
+					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+					dep.Lessons[subjectIndex] = newSubj
+				}
+				insertedGroups = append(insertedGroups, gr)
+				//end of new part
+
+				//				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
+				//				dep.Lessons[subjectIndex] = newSubj
 			}
 		}
 		return departments, insertedGroups
@@ -82,77 +96,62 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 			resFromReg = append(resFromReg, strconv.Itoa(i))
 		}
 	}
-	
+
 	for _, gr := range resFromReg {
-		if _, ok := subGroups[gr]; ok{
+		if _, ok := subGroups[gr]; ok {
 			resFromReg = append(resFromReg, subGroups[gr]...)
 		}
 	}
-	
-	fmt.Println(allGr)
-	fmt.Println(resFromReg)
+
 	for _, dep := range departments {
-		for _, gr := range resFromReg{
+		for _, gr := range resFromReg {
 			if dep.Number != gr {
-//				if _, ok := subGroups[gr]; ok{
-//					resFromReg = append(resFromReg, subGroups[gr]...)
-//					continue
-//				}
 				continue
 			}
 			if !nextLine {
 				if dep.Lessons[subjectIndex].Name == "" {
 					dep.Lessons[subjectIndex] = subject
+					insertedGroups = append(insertedGroups, gr)
+					continue
+				}
+				var subjs = make([]Subject, 0, 1)
+				if strings.Contains(dep.Lessons[subjectIndex].Name, "#") {
+					subjs = dep.Lessons[subjectIndex].parseSharp()
 				} else {
-					fmt.Println(subject, dep.Lessons[subjectIndex])
-					var subjs = make([]Subject, 0, 1)
-					if strings.Contains(dep.Lessons[subjectIndex].Name, "#"){
-						subjs = dep.Lessons[subjectIndex].parseSharp()
-					} else {
-						subjs = append(subjs, dep.Lessons[subjectIndex])
-					}
-					var isNew = true
-					for _, s := range subjs {
-						if subject.Name == s.Name && s.Room == subject.Room && subject.Lector == s.Lector {
-							isNew = false
-							break
-						}
-					}
-//					if subject.Name != dep.Lessons[subjectIndex].Name && dep.Lessons[subjectIndex].Room != subject.Room && subject.Lector != dep.Lessons[subjectIndex].Lector {
-//					if subject.Name != dep.Lessons[subjectIndex].Name || dep.Lessons[subjectIndex].Room != subject.Room || subject.Lector != dep.Lessons[subjectIndex].Lector {
-					if isNew {
-						newSubj := Subject{
-							Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
-							Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
-							Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
-						}
-						dep.Lessons[subjectIndex] = newSubj
+					subjs = append(subjs, dep.Lessons[subjectIndex])
+				}
+
+				var isNewSubject = true
+				for _, s := range subjs {
+					if subject.Name == s.Name && subject.Room == s.Room && subject.Lector == s.Lector {
+						isNewSubject = false
+						break
 					}
 				}
+				if isNewSubject {
+					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+					dep.Lessons[subjectIndex] = newSubj
+				}
+
 				insertedGroups = append(insertedGroups, gr)
 				continue
 			}
-			if !strings.Contains(dep.Lessons[subjectIndex].Name,"@") {
-				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
-				dep.Lessons[subjectIndex] = newSubj
-			} else {
-				fmt.Println(dep.Lessons[subjectIndex], subject)
-				regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
-				regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
-				regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
 
-//				if subject.Name != dep.Lessons[subjectIndex].Name && dep.Lessons[subjectIndex].Room != subject.Room && subject.Lector != dep.Lessons[subjectIndex].Lector {
-				if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
-					newSubj := Subject{
-						Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
-						Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
-						Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
-					}
-					dep.Lessons[subjectIndex] = newSubj
-				}
+			if !strings.Contains(dep.Lessons[subjectIndex].Name, "@") {
+				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
+				dep.Lessons[subjectIndex] = newSubj
+				insertedGroups = append(insertedGroups, gr)
+				continue
 			}
-//			newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
-//			dep.Lessons[subjectIndex] = newSubj
+
+			regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
+			regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
+			regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+
+			if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
+				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+				dep.Lessons[subjectIndex] = newSubj
+			}
 			insertedGroups = append(insertedGroups, gr)
 		}
 	}
@@ -185,7 +184,7 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				Room:   "__",
 			}
 			if nextLine {
-				newSubj = newSubj.getNewStruct(dep.Lessons[subjectIndex])
+				newSubj = newSubj.getNewStruct(dep.Lessons[subjectIndex], "@")
 			}
 			dep.Lessons[subjectIndex] = newSubj
 		}
@@ -241,11 +240,11 @@ func fromStringToInt(class string) int {
 	return numberFromClass
 }
 
-func (st *Subject) getNewStruct(subject Subject) Subject {
+func (st *Subject) getNewStruct(subject Subject, delimiter string) Subject {
 	return Subject{
-		Name:   subject.Name + "@" + st.Name,
-		Lector: subject.Lector + "@" + st.Lector,
-		Room:   subject.Room + "@" + st.Room,
+		Name:   subject.Name + delimiter + st.Name,
+		Lector: subject.Lector + delimiter + st.Lector,
+		Room:   subject.Room + delimiter + st.Room,
 	}
 }
 
@@ -271,7 +270,6 @@ func parseGroups(text, room string) Subject {
 		subj.Lector = "__"
 		return subj
 	}
-
 	if strings.Contains(text, mfk) {
 		subj.Name = mfk
 		subj.Room = "__"
@@ -308,43 +306,43 @@ func parseGroups(text, room string) Subject {
 		subj.Lector = "__"
 		return subj
 	}
-	if strings.Contains(text, prac){
+	if strings.Contains(text, prac) {
 		subj.Name = prac
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
 	if strings.Contains(text, specprac) {
-		subj.Name = text 
+		subj.Name = text
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
-	if strings.Contains(text, phys){
+	if strings.Contains(text, phys) {
 		subj.Name = phys
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
-	if strings.Contains(text, research){
+	if strings.Contains(text, research) {
 		subj.Name = research
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
-	if strings.Contains(text, astroProblems){
+	if strings.Contains(text, astroProblems) {
 		subj.Name = astroProblems
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
-	if strings.Contains(text, NIS){
+	if strings.Contains(text, NIS) {
 		subj.Name = NIS
 		subj.Room = "__"
 		subj.Lector = "__"
 		return subj
 	}
-	
+
 	fmt.Println(text)
 	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
@@ -355,7 +353,6 @@ func parseGroups(text, room string) Subject {
 	} else {
 		rSubj = regexp.MustCompile(`([^0-9]+) ` + room + " " + Lect)
 	}
-//	rSubj := regexp.MustCompile(`([^0-9\-]*) ` + room + " " + Lect)
 	Subj := rSubj.FindStringSubmatch(text)[1]
 
 	subj.Name = Subj
