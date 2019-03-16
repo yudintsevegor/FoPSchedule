@@ -14,13 +14,13 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-		"3": []string{"1"},
-//		"1": []string{"1", "2", "3"},
-//		"2": []string{"1", "2", "3"},
-//		"3": []string{"1", "2"},
-//		"4": []string{"1", "2"},
-//		"5": []string{"1", "2"},
-//		"6": []string{"1", "2"},
+//		"4": []string{"2"},
+		"1": []string{"1", "2", "3"},
+		"2": []string{"1", "2", "3"},
+		"3": []string{"1", "2"},
+		"4": []string{"1", "2"},
+		"5": []string{"1", "2"},
+		"6": []string{"1", "2"},
 	}
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {

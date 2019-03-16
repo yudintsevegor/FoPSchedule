@@ -62,19 +62,25 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 			resFromReg = append(resFromReg, strconv.Itoa(i))
 		}
 	}
-
+	
+	for _, gr := range resFromReg {
+		if _, ok := subGroups[gr]; ok{
+			resFromReg = append(resFromReg, subGroups[gr]...)
+		}
+	}
+	
+	fmt.Println(allGr)
 	fmt.Println(resFromReg)
 	for _, dep := range departments {
 		for _, gr := range resFromReg{
 			if dep.Number != gr {
-				if _, ok := subGroups[gr]; ok{
-					resFromReg = append(resFromReg, subGroups[gr]...)
-					continue
-				}
+//				if _, ok := subGroups[gr]; ok{
+//					resFromReg = append(resFromReg, subGroups[gr]...)
+//					continue
+//				}
 				continue
 			}
 			if !nextLine {
-				fmt.Println(gr)
 				if dep.Lessons[subjectIndex].Name == "" {
 					dep.Lessons[subjectIndex] = subject
 				} else {
@@ -91,8 +97,27 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				insertedGroups = append(insertedGroups, gr)
 				continue
 			}
-			newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
-			dep.Lessons[subjectIndex] = newSubj
+			if !strings.Contains(dep.Lessons[subjectIndex].Name,"@") {
+				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
+				dep.Lessons[subjectIndex] = newSubj
+			} else {
+				fmt.Println(dep.Lessons[subjectIndex], subject)
+				regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
+				regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
+				regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+
+//				if subject.Name != dep.Lessons[subjectIndex].Name && dep.Lessons[subjectIndex].Room != subject.Room && subject.Lector != dep.Lessons[subjectIndex].Lector {
+				if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
+					newSubj := Subject{
+						Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
+						Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
+						Room: dep.Lessons[subjectIndex].Room + "#" + subject.Room,
+					}
+					dep.Lessons[subjectIndex] = newSubj
+				}
+			}
+//			newSubj := subject.getNewStruct(dep.Lessons[subjectIndex])
+//			dep.Lessons[subjectIndex] = newSubj
 			insertedGroups = append(insertedGroups, gr)
 		}
 	}
