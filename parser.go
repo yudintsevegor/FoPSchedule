@@ -14,7 +14,7 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-//		"4": []string{"2"},
+//		"5": []string{"2"},
 		"1": []string{"1", "2", "3"},
 		"2": []string{"1", "2", "3"},
 		"3": []string{"1", "2"},

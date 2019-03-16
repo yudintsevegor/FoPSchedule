@@ -9,6 +9,26 @@ import (
 	"strings"
 	"unicode"
 )
+func (st *Subject) parseSharp() ([]Subject){
+	count := strings.Count(st.Name, "#")
+	str := strings.Repeat("(.*)#", count) + "(.*)"
+	reSharp := regexp.MustCompile(str)
+	names := reSharp.FindStringSubmatch(st.Name)[1:count+2]
+	lectors := reSharp.FindStringSubmatch(st.Lector)[1:count+2]
+	rooms := reSharp.FindStringSubmatch(st.Room)[1:count+2]
+	
+	var subjects = make([]Subject, 0, 1)
+	for i := 0; i < len(names); i++{
+		subj := Subject{
+			Name: names[i],
+			Room: rooms[i],
+			Lector: lectors[i],
+			Parity: st.Parity,
+		}
+		subjects = append(subjects, subj)
+	}
+	return subjects
+}
 
 func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text string, nextLine, is2Weeks, isFirstInSmall0 bool) ([]Department, []string) {
 	departments := st.Departments
@@ -84,8 +104,23 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				if dep.Lessons[subjectIndex].Name == "" {
 					dep.Lessons[subjectIndex] = subject
 				} else {
+					fmt.Println(subject, dep.Lessons[subjectIndex])
+					var subjs = make([]Subject, 0, 1)
+					if strings.Contains(dep.Lessons[subjectIndex].Name, "#"){
+						subjs = dep.Lessons[subjectIndex].parseSharp()
+					} else {
+						subjs = append(subjs, dep.Lessons[subjectIndex])
+					}
+					var isNew = true
+					for _, s := range subjs {
+						if subject.Name == s.Name && s.Room == subject.Room && subject.Lector == s.Lector {
+							isNew = false
+							break
+						}
+					}
 //					if subject.Name != dep.Lessons[subjectIndex].Name && dep.Lessons[subjectIndex].Room != subject.Room && subject.Lector != dep.Lessons[subjectIndex].Lector {
-					if subject.Name != dep.Lessons[subjectIndex].Name || dep.Lessons[subjectIndex].Room != subject.Room || subject.Lector != dep.Lessons[subjectIndex].Lector {
+//					if subject.Name != dep.Lessons[subjectIndex].Name || dep.Lessons[subjectIndex].Room != subject.Room || subject.Lector != dep.Lessons[subjectIndex].Lector {
+					if isNew {
 						newSubj := Subject{
 							Name: dep.Lessons[subjectIndex].Name + "#" + subject.Name,
 							Lector: dep.Lessons[subjectIndex].Lector + "#" + subject.Lector,
