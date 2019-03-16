@@ -103,7 +103,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	group := "316б"
+	group := "307"
+	
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{

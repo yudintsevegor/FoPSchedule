@@ -54,6 +54,7 @@ var (
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reAt   = regexp.MustCompile("(.*)@(.*)")
 	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
+	reDash = regexp.MustCompile(`(\s\-\s)`)
 
 	practice = "Преддипломная практика"
 	WAR      = "ВОЕННАЯ ПОДГОТОВКА"
@@ -75,8 +76,8 @@ var (
 	subGroups = map[string][]string{
 		"341": []string{"341а", "341б"},
 		"441": []string{"441а", "441б"},
-		"141М": []string{"141а", "141б"},
-		"241М": []string{"241а", "241б"},
+		"141М": []string{"141Mа", "141Мб"},
+		"241М": []string{"241Ма", "241Мб"},
 		"316": []string{"316а", "316б"},
 		"416": []string{"416а", "416б"},
 		"116М": []string{"116Ма", "116Мб"},

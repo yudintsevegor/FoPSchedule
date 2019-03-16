@@ -63,17 +63,19 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 		}
 	}
 
+	fmt.Println(resFromReg)
 	for _, dep := range departments {
 		for _, gr := range resFromReg{
 			if dep.Number != gr {
-				if _, ok := subGroups[gr]; !ok{
+				if _, ok := subGroups[gr]; ok{
+					resFromReg = append(resFromReg, subGroups[gr]...)
 					continue
 				}
-				resFromReg = append(resFromReg, subGroups[gr]...)
 				continue
 			}
 			if !nextLine {
-				if dep.Lessons[subjectIndex].Name == ""{
+				fmt.Println(gr)
+				if dep.Lessons[subjectIndex].Name == "" {
 					dep.Lessons[subjectIndex] = subject
 				} else {
 //					if subject.Name != dep.Lessons[subjectIndex].Name && dep.Lessons[subjectIndex].Room != subject.Room && subject.Lector != dep.Lessons[subjectIndex].Lector {
@@ -282,11 +284,17 @@ func parseGroups(text, room string) Subject {
 		subj.Lector = "__"
 		return subj
 	}
+	
 	fmt.Println(text)
 	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
 
-	rSubj := regexp.MustCompile(`([^0-9]+) ` + room + " " + Lect)
+	var rSubj *regexp.Regexp
+	if reDash.MatchString(text) {
+		rSubj = regexp.MustCompile(`([^0-9\-]+) ` + room + " " + Lect)
+	} else {
+		rSubj = regexp.MustCompile(`([^0-9]+) ` + room + " " + Lect)
+	}
 //	rSubj := regexp.MustCompile(`([^0-9\-]*) ` + room + " " + Lect)
 	Subj := rSubj.FindStringSubmatch(text)[1]
 

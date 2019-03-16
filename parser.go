@@ -14,7 +14,7 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-		"3": []string{"2"},
+		"3": []string{"1"},
 //		"1": []string{"1", "2", "3"},
 //		"2": []string{"1", "2", "3"},
 //		"3": []string{"1", "2"},
@@ -57,8 +57,8 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 		course = "[2,6]"
 	}
 	
-	var reGrp = regexp.MustCompile(course + `\d{2}[М,Б,а,б]*`)
-	var reInterval = regexp.MustCompile(`(` + course + `\d{2}[М,Б,а,б]*)\s*\-\s*` + `(` + course + `\d{2}[М,Б,а,б]*)`)
+	var reGrp = regexp.MustCompile(course + `\d{2}[МБаб]*`)
+	var reInterval = regexp.MustCompile(`(` + course + `\d{2}[МБаб]*)\s*\-\s*` + `(` + course + `\d{2}[МБаб]*)`)
 
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
@@ -373,6 +373,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 				Lesson:           subject,
 				RegexpInterval:   reInterval,
 			}
+			fmt.Println("++++++++++=",text,  resFromReg)
 			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
 			isFirstInSmall0 = false
 			//very strange part...
