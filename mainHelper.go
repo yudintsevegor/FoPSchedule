@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 //	"io/ioutil"
-//	"cmd/internal/browser"
 	
 	"golang.org/x/oauth2"
 	"golang.org/x/net/context"
@@ -29,19 +28,12 @@ func getClient(config *oauth2.Config) *http.Client {
 
 // Request a token from the web, then returns the retrieved token.
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
-	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+//	config.RedirectURL = "www.google.com"
+	authURL := config.AuthCodeURL("state-token")
+//	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Go to the following link in your browser then type the "+
 		"authorization code: \n%v\n", authURL)
-//	res, err := http.Get(authURL)
-//	
-//	if err != nil{
-//		log.Fatal(err)
-//	}
-//	defer res.Body.Close()
-//	body, err := ioutil.ReadAll(res.Body)
-//	_, _ = os.Stdout.Write(body)
-	
-//	_ = browser.Open(authURL)
+		
 	
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
@@ -64,6 +56,8 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 	defer f.Close()
 	tok := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(tok)
+	
+	fmt.Println(tok)
 	return tok, err
 }
 

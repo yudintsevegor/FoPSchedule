@@ -3,75 +3,141 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
+//	"io/ioutil"
 	"log"
-	"os"
+//	"os"
+//	"encoding/json"
 	"regexp"
 	"strings"
 	"time"
 	"net/http"
-
+	
 	"golang.org/x/oauth2"
-//	"golang.org/x/net/context"
+	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 )
 
-type Handler struct {
-	Hi string
-}
 
-var tokFile = "token.json"
 var (
 	config *oauth2.Config
 	// TODO: randomize it
-	oauthStateString = "pseudo-random"
+	oauthStateString = "state"
 )
-//
-//func init() {
-//	config = &oauth2.Config{
-//		RedirectURL:  "http://localhost:8080/",
-//		ClientID:     GOOGLE_CLIENT_ID,
-//		ClientSecret: GOOGLE_CLIENT_SECRET,
-//		Scopes:       []string{"https://www.googleapis.com/auth/admin.directory.resource.calendar"},
-////		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/admin.directory.resource.calendar"},
-//		Endpoint:     google.Endpoint,
-//	}
-//}
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	code := r.FormValue("code")
-	fmt.Fprintln(w, code)
-	
-//	tok := getTokenFromWeb(config)
-//	saveToken(tokFile, tok)
+
+func init() {
+	config = &oauth2.Config{
+		RedirectURL:  "http://localhost:8080/callback",
+		ClientID:     GOOGLE_CLIENT_ID,
+		ClientSecret: GOOGLE_CLIENT_SECRET,
+		Scopes:       []string{"https://www.googleapis.com/auth/calendar"},
+//		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Endpoint:     google.Endpoint,
+	}
 }
 
-func main() {
-	b, err := ioutil.ReadFile("credentials3.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-	
-	fmt.Println("staring server at :8080")
-	handler := &Handler{
-		Hi: "Hello World",
-	}
-	go http.ListenAndServe(":8080", handler)
-	
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
-	///config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
-	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	client := getClient(config)
+func handleMain(w http.ResponseWriter, r *http.Request) {
+	var htmlIndex = `<html>
+<body>
+	<a href="/login">Google Log In</a>
+</body>
+</html>`
+	fmt.Fprintf(w, htmlIndex)
+}
 
+func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
+	fmt.Println(r.FormValue("group"))
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func getClient(code string) *http.Client {
+	token, _ := config.Exchange(oauth2.NoContext, code)
+	fmt.Println("TOKEN", token)
+	return config.Client(oauth2.NoContext, token)
+}
+
+func getUserInfo(state string, code string) (*http.Client, []byte, error) {
+	client := &http.Client{}
+	if state != oauthStateString {
+		return client, nil, fmt.Errorf("invalid oauth state")
+	}
+
+//	token, err := config.Exchange(context.TODO(), code)
+	token, err := config.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		return client, nil, fmt.Errorf("code exchange failed: %s", err.Error())
+	}
+	
+//	tokFile := "token.json"
+//	saveToken(tokFile, token)
+
+	contents := make([]byte, 0, 1)
+//	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+//	if err != nil {
+//		return client, nil, fmt.Errorf("failed getting user info: %s", err.Error())
+//	}
+//
+//	defer response.Body.Close()
+//	contents, err := ioutil.ReadAll(response.Body)
+//	if err != nil {
+//		return client, nil, fmt.Errorf("failed reading response body: %s", err.Error())
+//	}
+
+	fmt.Println("FIRST")
+	fmt.Println(token)
+	client = config.Client(context.Background(), token)
+//	client = config.Client(oauth2.NoContext, token)
+//	fmt.Println(client)
+	
+	return client, contents, nil
+}
+
+func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	code := r.FormValue("code")
+	
+//	_, _, err := getUserInfo(r.FormValue("state"), r.FormValue("code"))
+//	if err != nil {
+//		fmt.Println(err.Error())
+//		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+//		return
+//	}
+	token, _ := config.Exchange(oauth2.NoContext, code)
+//	fmt.Println("SECOND")
+//	fmt.Println(config)
+//	fmt.Println(token)
+//	fmt.Println(code)
+//	client := getClient(code)
+	client := config.Client(oauth2.NoContext, token)
+
+//	fmt.Fprintf(w, "Content: %s\n", content)
+//	fmt.Fprintf(w, code)
+
+//	fmt.Println(code, client)
+	fmt.Println("alles gut", code)
+//	http.Redirect(w, r, "/put", http.StatusTemporaryRedirect)
+	
+	go putData(client)
+//	client := getClient(config, r.FormValue("code"))
+}
+
+func handlePut(w http.ResponseWriter, r *http.Request) {
+	code := r.FormValue("code")
+	fmt.Fprintln(w, "LOL", code)
+	token, err := config.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		log.Fatal(err, "blya", code)
+	}
+	client := config.Client(oauth2.NoContext, token)
+	putData(client)
+}
+
+func putData(client *http.Client){
 	srv, err := calendar.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
-//	_ = os.Remove("token.json")
-
+	
 	// ====================================================================
 	// Get data from database
 	db, err := sql.Open("mysql", DSN)
@@ -83,10 +149,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Put your group: ")
-	var group string
-	fmt.Fscan(os.Stdin, &group)
-//	group := "142М"
+	group := "142М"
 
 	allWeek := dbExplorer(db, group)
 
@@ -94,6 +157,7 @@ func main() {
 		Summary: "Shedule" + group,
 	}
 	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
+	
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,6 +219,18 @@ func main() {
 		}
 		t = t.AddDate(0, 0, 1)
 	}
+/**/
+
+}
+
+
+func main() {
+	http.HandleFunc("/", handleMain)
+	http.HandleFunc("/login", handleGoogleLogin)
+	http.HandleFunc("/callback", handleGoogleCallback)
+	http.HandleFunc("/put", handlePut)
+	fmt.Println("Listen")
+	fmt.Println(http.ListenAndServe(":8080", nil))
 }
 
 func (st *Subject) parseSharp() []Subject {
