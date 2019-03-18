@@ -1,4 +1,4 @@
 #!/urs/bin/bash
 
-go run config.go global.go showShedule.go
+go run Shedule/config.go Shedule/global.go Shedule/showShedule.go
 

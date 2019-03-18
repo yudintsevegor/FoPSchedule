@@ -1,4 +1,4 @@
 #!/usr/bin/bash
 
-go run config.go global.go helper.go parser.go
+go run Parsing/config.go Parsing/global.go Parsing/parserHelper.go Parsing/parser.go Parsing/htmlgen.go
 

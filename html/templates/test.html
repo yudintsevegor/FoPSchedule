@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+  </head>
+ <body>
+ <form action="http://127.0.0.1:8080/result" method="post" enctype="application/x-www-form-urlencoded">
+   <p><select name="data">
+    <optgroup label="Первый курс">
+		<option value=`{"group": "101", "code": "eesdsd"}`>101</option>
+     <option value="102">102</option>
+     <option value="103">103</option>
+    </optgroup>
+    <optgroup label="Второй курс">
+     <option value="201">201</option>
+     <option value="202">202</option>
+     <option value="203">203</option>
+    </optgroup>
+   </select></p>
+   <p><input type="submit" value="Отправить"></p>
+  </form>
+ </body>
+</html>
