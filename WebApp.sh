@@ -1,3 +1,3 @@
 #!/urs/bin/bash
 
-go run Server/mainServer.go Server/dbexplorer.go Server/config.go Server/global.go
+go run main.go dbexplorer.go config.go global.go

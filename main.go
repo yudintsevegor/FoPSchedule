@@ -3,75 +3,132 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 	"net/http"
-
+	"html/template"
+	
 	"golang.org/x/oauth2"
-//	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 )
 
-type Handler struct {
-	Hi string
+func init() {
+	config = &oauth2.Config{
+		RedirectURL:  "http://localhost:8080/callback",
+		ClientID:     GOOGLE_CLIENT_ID,
+		ClientSecret: GOOGLE_CLIENT_SECRET,
+		Scopes:       []string{"https://www.googleapis.com/auth/calendar"},
+		Endpoint:     google.Endpoint,
+	}
 }
 
-var tokFile = "token.json"
-var (
-	config *oauth2.Config
-	// TODO: randomize it
-	oauthStateString = "pseudo-random"
-)
-//
-//func init() {
-//	config = &oauth2.Config{
-//		RedirectURL:  "http://localhost:8080/",
-//		ClientID:     GOOGLE_CLIENT_ID,
-//		ClientSecret: GOOGLE_CLIENT_SECRET,
-//		Scopes:       []string{"https://www.googleapis.com/auth/admin.directory.resource.calendar"},
-////		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/admin.directory.resource.calendar"},
-//		Endpoint:     google.Endpoint,
-//	}
-//}
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	code := r.FormValue("code")
-	fmt.Fprintln(w, code)
+func (h *Handler) handlerMain(w http.ResponseWriter, r *http.Request) {
+	var htmlIndex = `
+	<html>
+	<head>
+	<style>
+	.block1{
+		position: fixed;
+		top: 50%;
+		width: 200px;
+		height: 100px;
+		left: 25%;
+	}
+	</style>
+	</head>
+	<body>
+		<div align="center">
+		<p>
+		Данное web-приложение позволяет загрузить расписание любой группы физфака МГУ в Google-Calendar. Программа работает в сыром режиме, возможны баги etc. Перед началом работы необходимо авторизироваться(кнопка ниже). Затем будет предложено выбрать группу из списка. Ожидание выгрузки составляет от 10 до 30 секунд. Наберитесь терпения.
+		</p>
+		</div>
+		<div align="center">
+		<a href="/login">Google Log In</a>
+		</div>
+	</body>
+	</html>`
+	fmt.Fprintf(w, htmlIndex)
+}
+
+func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func getClient(state string, code string) (*http.Client, error) {
+	client := &http.Client{}
+	if state != oauthStateString {
+		return client, fmt.Errorf("invalid oauth state")
+	}
+
+	token, err := config.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		return client, fmt.Errorf("code exchange failed: %s", err.Error())
+	}
 	
-//	tok := getTokenFromWeb(config)
-//	saveToken(tokFile, tok)
+	client = config.Client(oauth2.NoContext, token)
+	
+	return client, nil
+}
+
+func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	group := r.Form["group"][0]
+	
+//	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
+//	fmt.Fprintln(w, group)
+	
+	client, err := getClient(oauthStateString, h.Code)
+	if err != nil{
+		log.Fatal(err)
+	}
+	go putData(client, group)
+	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	code := r.FormValue("code")
+	h.Code = code
+	
+	tmpl, err := template.ParseGlob("index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request){
+	switch r.URL.Path {
+	case "/":
+		h.handlerMain(w,r)
+	case "/login":
+		h.handlerGoogleLogin(w,r)
+	case "/callback":
+		h.handlerGoogleCallback(w,r)
+	case "/result":
+		h.handlerResult(w,r)
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
 }
 
 func main() {
-	b, err := ioutil.ReadFile("Local/credentials3.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-	
-	fmt.Println("staring server at :8080")
 	handler := &Handler{
-		Hi: "Hello World",
+		Code: "",
 	}
-	go http.ListenAndServe(":8080", handler)
-	
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
-	///config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
-	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	client := getClient(config)
+	fmt.Println("starting server at :8080")
+	http.ListenAndServe(":8080", handler)
+}
 
+func putData(client *http.Client, group string){
 	srv, err := calendar.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
-//	_ = os.Remove("token.json")
-
+	
 	// ====================================================================
 	// Get data from database
 	db, err := sql.Open("mysql", DSN)
@@ -83,17 +140,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Put your group: ")
-	var group string
-	fmt.Fscan(os.Stdin, &group)
-//	group := "142М"
-
 	allWeek := dbExplorer(db, group)
 
 	clndr := &calendar.Calendar{
 		Summary: "Shedule" + group,
 	}
 	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
+	
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -161,6 +214,7 @@ func (st *Subject) parseSharp() []Subject {
 	count := strings.Count(st.Name, "#")
 	str := strings.Repeat("(.*)#", count) + "(.*)"
 	reSharp := regexp.MustCompile(str)
+
 	names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
 	lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
 	rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]

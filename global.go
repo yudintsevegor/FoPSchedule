@@ -3,6 +3,8 @@ package main
 import (
 	"regexp"
 	"time"
+	
+	"golang.org/x/oauth2"
 )
 
 type Subject struct {
@@ -46,7 +48,22 @@ type DataToParsingAt struct {
 	SemesterEnd string
 }
 
+type Template struct {
+	Course string
+	Group string
+}
+
+type Handler struct{
+	Code string
+}
+
 var (
+	html = "Server/index.html"
+	urlCalendar = "https://calendar.google.com"
+	config *oauth2.Config
+	// TODO: randomize it
+	oauthStateString = "state"
+
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 
@@ -73,10 +90,19 @@ var (
 
 	cases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
 
+	testCourse = map[string]string{
+		"1": "Первый",
+		"2": "Второй",
+		"3": "Третий",
+		"4": "Четвертый",
+		"5": "Пятый",
+		"6": "Шестой",
+	}
+	
 	subGroups = map[string][]string{
 		"341":  []string{"341а", "341б"},
 		"441":  []string{"441а", "441б"},
-		"141М": []string{"141Mа", "141Мб"},
+		"141М": []string{"141Ма", "141Мб"},
 		"241М": []string{"241Ма", "241Мб"},
 		"316":  []string{"316а", "316б"},
 		"416":  []string{"416а", "416б"},
