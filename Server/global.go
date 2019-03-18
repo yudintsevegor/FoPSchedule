@@ -3,6 +3,8 @@ package main
 import (
 	"regexp"
 	"time"
+	
+	"golang.org/x/oauth2"
 )
 
 type Subject struct {
@@ -51,9 +53,17 @@ type Template struct {
 	Group string
 }
 
+type Handler struct{
+	Code string
+}
+
 var (
 	html = "Server/index.html"
-	
+	urlCalendar = "https://calendar.google.com"
+	config *oauth2.Config
+	// TODO: randomize it
+	oauthStateString = "state"
+
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 

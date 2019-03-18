@@ -3,27 +3,16 @@ package main
 import (
 	"database/sql"
 	"fmt"
-//	"io/ioutil"
 	"log"
-//	"os"
-//	"encoding/json"
 	"regexp"
 	"strings"
 	"time"
 	"net/http"
-	"context"
 	"html/template"
 	
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
-)
-
-
-var (
-	config *oauth2.Config
-	// TODO: randomize it
-	oauthStateString = "state"
 )
 
 func init() {
@@ -36,28 +25,40 @@ func init() {
 	}
 }
 
-func handleMain(w http.ResponseWriter, r *http.Request) {
-	var htmlIndex = `<html>
-<body>
-	<a href="/login">Google Log In</a>
-</body>
-</html>`
+func (h *Handler) handlerMain(w http.ResponseWriter, r *http.Request) {
+	var htmlIndex = `
+	<html>
+	<head>
+	<style>
+	.block1{
+		position: fixed;
+		top: 50%;
+		width: 200px;
+		height: 100px;
+		left: 25%;
+	}
+	</style>
+	</head>
+	<body>
+		<div align="center">
+		<p>
+		Данное web-приложение позволяет загрузить расписание любой группы физфака МГУ в Google-Calendar. Программа работает в сыром режиме, возможны баги etc. Перед началом работы необходимо авторизироваться(кнопка ниже). Затем будет предложено выбрать группу из списка. Ожидание выгрузки составляет от 10 до 30 секунд. Наберитесь терпения.
+		</p>
+		</div>
+		<div align="center">
+		<a href="/login">Google Log In</a>
+		</div>
+	</body>
+	</html>`
 	fmt.Fprintf(w, htmlIndex)
 }
 
-func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
-	fmt.Println(r.FormValue("group"))
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func getClient(code string) *http.Client {
-	token, _ := config.Exchange(oauth2.NoContext, code)
-	fmt.Println("TOKEN", token)
-	return config.Client(oauth2.NoContext, token)
-}
-
-func getUserInfo(state string, code string) (*http.Client, error) {
+func getClient(state string, code string) (*http.Client, error) {
 	client := &http.Client{}
 	if state != oauthStateString {
 		return client, fmt.Errorf("invalid oauth state")
@@ -67,67 +68,60 @@ func getUserInfo(state string, code string) (*http.Client, error) {
 	if err != nil {
 		return client, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
+	
 	client = config.Client(oauth2.NoContext, token)
 	
 	return client, nil
 }
 
-func handleResult(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-//	fmt.Fprintln(w, r.Form)
 	group := r.Form["group"][0]
-	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
-	fmt.Fprintln(w, group)
-	code := r.Context().Value("code")
-	fmt.Println("KEK")
-	if code != nil {
-		client, err := getUserInfo("state", code.(string))
-		if err != nil{
-			log.Fatal(err)
-		}
-		fmt.Fprintln(w, client)	
-	}
-	cod := r.FormValue("code")
-	client, err := getUserInfo("state", cod)
+	
+//	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
+//	fmt.Fprintln(w, group)
+	
+	client, err := getClient(oauthStateString, h.Code)
 	if err != nil{
 		log.Fatal(err)
 	}
-//	fmt.Fprintln(w, client)	
 	go putData(client, group)
+	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
 }
 
-type C struct{
-	Code string
-}
-
-func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
+	h.Code = code
 	
-//	token, _ := config.Exchange(oauth2.NoContext, code)
-//	client := config.Client(oauth2.NoContext, token)
-//	NewReuqest()
-	fmt.Println(code)
-	ctx := context.WithValue(r.Context(), "code", code)
-	r = r.WithContext(ctx)
 	tmpl, err := template.ParseGlob("Server/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
-	tmpl.ExecuteTemplate(w, "index.html", C{code})
-//	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
-//	fmt.Println(client)
+	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
 }
 
-//func handlePut(w http.ResponseWriter, r *http.Request) {
-//	code := r.FormValue("code")
-//	fmt.Fprintln(w, "LOL", code)
-//	token, err := config.Exchange(oauth2.NoContext, code)
-//	if err != nil {
-//		log.Fatal(err, "blya", code)
-//	}
-//	client := config.Client(oauth2.NoContext, token)
-//	putData(client, group)
-//}
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request){
+	switch r.URL.Path {
+	case "/":
+		h.handlerMain(w,r)
+	case "/login":
+		h.handlerGoogleLogin(w,r)
+	case "/callback":
+		h.handlerGoogleCallback(w,r)
+	case "/result":
+		h.handlerResult(w,r)
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func main() {
+	handler := &Handler{
+		Code: "",
+	}
+	fmt.Println("starting server at :8080")
+	http.ListenAndServe(":8080", handler)
+}
 
 func putData(client *http.Client, group string){
 	srv, err := calendar.New(client)
@@ -145,8 +139,6 @@ func putData(client *http.Client, group string){
 	if err != nil {
 		log.Fatal(err)
 	}
-
-//	group := "142М"
 
 	allWeek := dbExplorer(db, group)
 
@@ -216,25 +208,13 @@ func putData(client *http.Client, group string){
 		}
 		t = t.AddDate(0, 0, 1)
 	}
-/**/
-
-}
-
-
-func main() {
-	http.HandleFunc("/", handleMain)
-	http.HandleFunc("/login", handleGoogleLogin)
-	http.HandleFunc("/callback", handleGoogleCallback)
-//	http.HandleFunc("/put", handlePut)
-	http.HandleFunc("/result", handleResult)
-	fmt.Println("Listen")
-	fmt.Println(http.ListenAndServe(":8080", nil))
 }
 
 func (st *Subject) parseSharp() []Subject {
 	count := strings.Count(st.Name, "#")
 	str := strings.Repeat("(.*)#", count) + "(.*)"
 	reSharp := regexp.MustCompile(str)
+
 	names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
 	lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
 	rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]
