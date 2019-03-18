@@ -17,37 +17,8 @@ import (
 	"google.golang.org/api/calendar/v3"
 )
 
-type Handler struct {
-	Hi string
-}
-
-var tokFile = "token.json"
-var (
-	config *oauth2.Config
-	// TODO: randomize it
-	oauthStateString = "pseudo-random"
-)
-//
-//func init() {
-//	config = &oauth2.Config{
-//		RedirectURL:  "http://localhost:8080/",
-//		ClientID:     GOOGLE_CLIENT_ID,
-//		ClientSecret: GOOGLE_CLIENT_SECRET,
-//		Scopes:       []string{"https://www.googleapis.com/auth/admin.directory.resource.calendar"},
-////		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/admin.directory.resource.calendar"},
-//		Endpoint:     google.Endpoint,
-//	}
-//}
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	code := r.FormValue("code")
-	fmt.Fprintln(w, code)
-	
-//	tok := getTokenFromWeb(config)
-//	saveToken(tokFile, tok)
-}
-
 func main() {
-	b, err := ioutil.ReadFile("Local/credentials3.json")
+	b, err := ioutil.ReadFile("credentials3.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
@@ -60,7 +31,6 @@ func main() {
 	
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
-	///config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
@@ -70,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
-//	_ = os.Remove("token.json")
+	_ = os.Remove("token.json")
 
 	// ====================================================================
 	// Get data from database
