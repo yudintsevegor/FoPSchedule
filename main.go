@@ -9,10 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"net/http"
-
-	"golang.org/x/oauth2"
-//	"golang.org/x/net/context"
+	
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 )
@@ -22,12 +19,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
-	
-	fmt.Println("staring server at :8080")
-	handler := &Handler{
-		Hi: "Hello World",
-	}
-	go http.ListenAndServe(":8080", handler)
 	
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
