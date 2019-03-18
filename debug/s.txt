@@ -1,0 +1,19 @@
+&{
+288999718853-q55lf2grmtegtig1p9384s8eli0be2dp.apps.googleusercontent.com
+E6EUMRIoOUGOPONfgkpWGS2I
+{https://accounts.google.com/o/oauth2/auth https://accounts.google.com/o/oauth2/token}
+http://localhost:8080/callback
+[https://www.googleapis.com/auth/userinfo.email]
+}
+
+
+&{
+288999718853-q55lf2grmtegtig1p9384s8eli0be2dp.apps.googleusercontent.com
+E6EUMRIoOUGOPONfgkpWGS2I
+{https://accounts.google.com/o/oauth2/auth https://accounts.google.com/o/oauth2/token}
+http://localhost:8080/callback
+[https://www.googleapis.com/auth/userinfo.email]
+}
+
+
+{"access_token":"ya29.GlvPBrXSeiB8Ia0dAxA8Pr3FQmw7txW5uRcZtW-i_OtmGsuuixY_qpuFiJS-f79Az4B5L-cCxv0TjnB6Zabk4r8dN-QEGsLhhfR8sRpl0j3kI0BaoqxLzoHBmGtC","token_type":"Bearer","expiry":"2019-03-17T21:24:28.897141395+03:00"}
