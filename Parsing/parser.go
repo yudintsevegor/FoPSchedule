@@ -60,13 +60,12 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if strings.Contains(tableName, "М") {
+		if strings.Contains(tableName, "М") || strings.Contains(tableName, "м") {
 			i := getCourse(tableName)
 			tablesNames[i+3] = append(tablesNames[i+3], tableName)
 			continue
 		}
 		i := getCourse(tableName)
-		fmt.Println(tableName, strings.Contains(tableName, "М"))
 		tablesNames[i-1] = append(tablesNames[i-1], tableName)
 	}
 

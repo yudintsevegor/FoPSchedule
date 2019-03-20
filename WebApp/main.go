@@ -119,9 +119,12 @@ func main() {
 	handler := &Handler{
 		Code: "",
 	}
-	port := "8080"
-	fmt.Println("starting server at :" + port)
-	http.ListenAndServe(":"+port, handler)
+	go func(){
+		port := "8080"
+		fmt.Println("starting server at :" + port)
+		http.ListenAndServe(":"+port, handler)	
+	}()
+	select{}
 }
 
 func putData(client *http.Client, group string) {
