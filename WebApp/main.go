@@ -17,7 +17,7 @@ import (
 
 func init() {
 	config = &oauth2.Config{
-		RedirectURL:  "http://localhost:8080/callback",
+		RedirectURL:  host + "/callback",
 		ClientID:     GOOGLE_CLIENT_ID,
 		ClientSecret: GOOGLE_CLIENT_SECRET,
 		Scopes:       []string{"https://www.googleapis.com/auth/calendar"},
@@ -119,8 +119,9 @@ func main() {
 	handler := &Handler{
 		Code: "",
 	}
-	fmt.Println("starting server at :8080")
-	http.ListenAndServe(":8080", handler)
+	port := "8080"
+	fmt.Println("starting server at :"+port)
+	http.ListenAndServe(":"+port, handler)
 }
 
 func putData(client *http.Client, group string){

@@ -58,6 +58,7 @@ type Handler struct{
 }
 
 var (
+	host = "http://localhost:8080"
 	html = "Server/index.html"
 	urlCalendar = "https://calendar.google.com"
 	config *oauth2.Config

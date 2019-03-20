@@ -52,7 +52,7 @@ type Template struct {
 }
 
 var (
-	html = "../index.html"
+	html = "../WebApp/index.html"
 	
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
