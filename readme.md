@@ -19,7 +19,7 @@ The program allows you to upload the schedule of any group(in scope the Faculty 
 During development, i used following packages:
 * For parsing [goqury](https://godoc.org/github.com/fzipp/goquery)
 * For google-authorization [oauth2](https://godoc.org/golang.org/x/oauth2)
-* [GoogleAPI](google.golang.org/api/calendar/v3)
+* [GoogleAPI](https://godoc.org/google.golang.org/api/calendar/v3)
 * Standart libs of golang
 
 # How to launch it on local machine?
