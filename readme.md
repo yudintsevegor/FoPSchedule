@@ -1,5 +1,6 @@
 # Shedule of Faculty of Physics && Google-Calendar.
-This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.ru/table/4/1.htm) and Google-Calendar(https://developers.google.com/calendar) interaction.
+This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.ru/table/4/1.htm) and Google-Calendar(https://developers.google.com/calendar) interaction. All my app is written with golang. For storage data i used MySQL.
+
 
 # Content of repository.
 * branch: master (main branch with web-applification)
@@ -12,7 +13,7 @@ This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.r
 * branch: console (with console-applification)
 
 # Opportunities.
-The program allows you to upload the schedule of any group(in scope the Faculty of Physics) to your google-calendar using your google-account. All my app is written with golang. For storage data i used MySQL.
+The program allows you to upload the schedule of any group(in scope the Faculty of Physics) to your google-calendar using your google-account.
 
 # Packages.
 During development, i used following packages:
