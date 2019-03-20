@@ -3,7 +3,7 @@ package main
 import (
 	"regexp"
 	"time"
-	
+
 	"golang.org/x/oauth2"
 )
 
@@ -50,18 +50,18 @@ type DataToParsingAt struct {
 
 type Template struct {
 	Course string
-	Group string
+	Group  string
 }
 
-type Handler struct{
+type Handler struct {
 	Code string
 }
 
 var (
-	host = "http://localhost:8080"
-	html = "Server/index.html"
+	host        = "http://localhost:8080"
+	html        = "Server/index.html"
 	urlCalendar = "https://calendar.google.com"
-	config *oauth2.Config
+	config      *oauth2.Config
 	// TODO: randomize it
 	oauthStateString = "state"
 
@@ -99,7 +99,7 @@ var (
 		"5": "Пятый",
 		"6": "Шестой",
 	}
-	
+
 	subGroups = map[string][]string{
 		"341":  []string{"341а", "341б"},
 		"441":  []string{"441а", "441б"},

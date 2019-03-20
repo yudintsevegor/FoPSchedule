@@ -48,12 +48,12 @@ type DataToParsingAt struct {
 
 type Template struct {
 	Course string
-	Group string
+	Group  string
 }
 
 var (
 	html = "../WebApp/index.html"
-	
+
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 
@@ -88,7 +88,7 @@ var (
 		"5": "Пятый",
 		"6": "Шестой",
 	}
-	
+
 	subGroups = map[string][]string{
 		"341":  []string{"341а", "341б"},
 		"441":  []string{"441а", "441б"},

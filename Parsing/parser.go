@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
-	"strings"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	_ "github.com/go-sql-driver/mysql"
@@ -16,7 +16,7 @@ import (
 
 func main() {
 	var courses = map[string][]string{
-//		"5": []string{"1"},
+		//		"5": []string{"1"},
 		"1": []string{"1", "2", "3"},
 		"2": []string{"1", "2", "3"},
 		"3": []string{"1", "2"},
@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	for course, arr := range courses {
 		for _, thread := range arr {
 			res, err := http.Get("http://ras.phys.msu.ru/table/" + course + "/" + thread + ".html")
@@ -52,15 +52,15 @@ func main() {
 	}
 	var tablesNames = make([][]string, 6)
 	var tableName string
-	
+
 	rowsTb, err := db.Query("SHOW TABLES")
 	defer rowsTb.Close()
 	for rowsTb.Next() {
 		err = rowsTb.Scan(&tableName)
 		if err != nil {
-			log.Fatal(err) 
+			log.Fatal(err)
 		}
-		if strings.Contains(tableName, "М"){
+		if strings.Contains(tableName, "М") {
 			i := getCourse(tableName)
 			tablesNames[i+3] = append(tablesNames[i+3], tableName)
 			continue
@@ -69,17 +69,17 @@ func main() {
 		fmt.Println(tableName, strings.Contains(tableName, "М"))
 		tablesNames[i-1] = append(tablesNames[i-1], tableName)
 	}
-	
+
 	out, err := os.Create(html)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Fprintf(out, head)
-	for j, course := range tablesNames{
+	for j, course := range tablesNames {
 		k := strconv.Itoa(j + 1)
 		label.Execute(out, Template{textCourse[k], ""})
-		for _, group := range course{
+		for _, group := range course {
 			option.Execute(out, Template{"", group})
 		}
 		fmt.Fprintf(out, endOpt)
@@ -87,20 +87,20 @@ func main() {
 	fmt.Fprintf(out, end)
 }
 
-func getCourse(tableName string) (int){
-	if strings.HasPrefix(tableName, "1"){
+func getCourse(tableName string) int {
+	if strings.HasPrefix(tableName, "1") {
 		return 1
 	}
-	if strings.HasPrefix(tableName, "2"){
+	if strings.HasPrefix(tableName, "2") {
 		return 2
 	}
-	if strings.HasPrefix(tableName, "3"){
+	if strings.HasPrefix(tableName, "3") {
 		return 3
 	}
-	if strings.HasPrefix(tableName, "4"){
+	if strings.HasPrefix(tableName, "4") {
 		return 4
 	}
-	if strings.HasPrefix(tableName, "5"){
+	if strings.HasPrefix(tableName, "5") {
 		return 5
 	}
 	return 6

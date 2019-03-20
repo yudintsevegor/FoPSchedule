@@ -3,13 +3,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
-	"net/http"
-	"html/template"
-	
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
@@ -68,21 +68,21 @@ func getClient(state string, code string) (*http.Client, error) {
 	if err != nil {
 		return client, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
-	
+
 	client = config.Client(oauth2.NoContext, token)
-	
+
 	return client, nil
 }
 
 func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	group := r.Form["group"][0]
-	
-//	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
-//	fmt.Fprintln(w, group)
-	
+
+	//	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
+	//	fmt.Fprintln(w, group)
+
 	client, err := getClient(oauthStateString, h.Code)
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 	go putData(client, group)
@@ -92,7 +92,7 @@ func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
 	h.Code = code
-	
+
 	tmpl, err := template.ParseGlob("index.html")
 	if err != nil {
 		log.Fatal(err)
@@ -100,16 +100,16 @@ func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) 
 	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request){
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/":
-		h.handlerMain(w,r)
+		h.handlerMain(w, r)
 	case "/login":
-		h.handlerGoogleLogin(w,r)
+		h.handlerGoogleLogin(w, r)
 	case "/callback":
-		h.handlerGoogleCallback(w,r)
+		h.handlerGoogleCallback(w, r)
 	case "/result":
-		h.handlerResult(w,r)
+		h.handlerResult(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -120,16 +120,16 @@ func main() {
 		Code: "",
 	}
 	port := "8080"
-	fmt.Println("starting server at :"+port)
+	fmt.Println("starting server at :" + port)
 	http.ListenAndServe(":"+port, handler)
 }
 
-func putData(client *http.Client, group string){
+func putData(client *http.Client, group string) {
 	srv, err := calendar.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
-	
+
 	// ====================================================================
 	// Get data from database
 	db, err := sql.Open("mysql", DSN)
@@ -147,7 +147,7 @@ func putData(client *http.Client, group string){
 		Summary: "Shedule" + group,
 	}
 	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
-	
+
 	if err != nil {
 		log.Fatal(err)
 	}
