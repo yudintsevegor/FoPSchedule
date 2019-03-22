@@ -2,6 +2,7 @@ package main
 
 import (
 	"regexp"
+	"net/http"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -53,17 +54,22 @@ type Template struct {
 	Group  string
 }
 
-type Handler struct {
+type Session struct{
+	Client *http.Client
 	Code string
+}
+type Handler struct {
+	Sessions map[string]Session
+	State string
+}
+type ServerError struct {
+	Error string
 }
 
 var (
 	host        = "http://localhost:8080"
-	html        = "Server/index.html"
 	urlCalendar = "https://calendar.google.com"
 	config      *oauth2.Config
-	// TODO: randomize it
-	oauthStateString = "state"
 
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "

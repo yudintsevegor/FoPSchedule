@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"sync"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
-//	"encoding/json"
-	"encoding/base64"
-	"crypto/rand"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -57,130 +53,51 @@ func (h *Handler) handlerMain(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, htmlIndex)
 }
 
-var mu = &sync.Mutex{}
-
 func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	//TODO
-	size := 16
-	rb := make([]byte, size)
-	_, err := rand.Read(rb)
-	if err != nil {
-		log.Fatal(err)
-	}
-	oauthStateString := base64.URLEncoding.EncodeToString(rb)
-	h.State = oauthStateString
 	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	size := 16
-	rb := make([]byte, size)
-	_, err := rand.Read(rb)
+func getClient(state string, code string) (*http.Client, error) {
+	client := &http.Client{}
+	if state != oauthStateString {
+		return client, fmt.Errorf("invalid oauth state")
+	}
+
+	token, err := config.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		return client, fmt.Errorf("code exchange failed: %s", err.Error())
+	}
+
+	client = config.Client(oauth2.NoContext, token)
+
+	return client, nil
+}
+
+func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	group := r.Form["group"][0]
+
+	//	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
+	//	fmt.Fprintln(w, group)
+
+	client, err := getClient(oauthStateString, h.Code)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
-	c, err := r.Cookie("session")
-	code := ""
-	
-	if err != nil {
-		fmt.Println("new cookie")
-		oauthStateString := base64.URLEncoding.EncodeToString(rb)
-		cook := &http.Cookie{
-				Name: "session",
-				Value: oauthStateString,
-				Expires: time.Now().AddDate(0,0,1),
-				Path: host + "/result",
-			}
-		http.SetCookie(w, cook)
-		code = r.FormValue("code")
-		mu.Lock()
-		st := h.Sessions[cook.Value]
-		st.Code = code
-		h.Sessions[cook.Value] = st
-		r.AddCookie(cook)
-		mu.Unlock()
-	} else {
-		if _, ok := h.Sessions[c.Value]; ok{
-			code = h.Sessions[c.Value].Code
-		} else{
-			fmt.Println("DELETE", c)
-			http.SetCookie(w, &http.Cookie{
-				Name: c.Name,
-				MaxAge: -1,
-				Expires: time.Now().Add(-100 * time.Minute),
-			})
-			http.Redirect(w, r, host + "/", http.StatusTemporaryRedirect)
-			return
-		}
-	}
-	fmt.Println(h.Sessions, c)
+	go putData(client, group)
+	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
+}
 
-	for _, c := range r.Cookies(){
-		fmt.Println("COOKIES", c)
-	}
-	
+func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	code := r.FormValue("code")
+	h.Code = code
+
 	tmpl, err := template.ParseGlob("index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
 	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
-}
-
-func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	c, err := r.Cookie("session")
-	if err != nil {
-		fmt.Fprintf(w, "no cookie")
-		return
-	}
-	group := r.FormValue("group")
-	fmt.Println("RES: ", h.Sessions)
-	for _, c := range r.Cookies(){
-		fmt.Println("res cookies", c)
-	}
-	
-	if ses, ok := h.Sessions[c.Value]; ok{
-		fmt.Println("code", ses.Code)
-		if ses.Code == ""{
-			http.Redirect(w, r, host + "/login", http.StatusTemporaryRedirect)
-			mu.Unlock()
-			return
-		}
-		fmt.Println(h.Sessions)
-		client := &http.Client{}
-		fmt.Println(h.Sessions[c.Value].Client)
-		if h.Sessions[c.Value].Client == nil {
-			client, err = getClient(ses.Code)
-			if err != nil {
-				log.Fatal(err)
-			}
-			st := h.Sessions[c.Value]
-			st.Client = client
-			h.Sessions[c.Value] = st
-		} else {
-			client = h.Sessions[c.Value].Client
-		}
-		mu.Unlock()
-		
-		go putData(client, group)
-		http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
-		return
-	}
-	mu.Unlock()
-	http.Redirect(w, r, host + "/callback", http.StatusTemporaryRedirect)
-}
-
-func getClient(code string) (*http.Client, error) {
-	client := &http.Client{}
-	token, err := config.Exchange(oauth2.NoContext, code)
-	if err != nil {
-		return client, fmt.Errorf("code exchange failed: %s", err.Error())
-	}
-	client = config.Client(oauth2.NoContext, token)
-
-	return client, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -199,11 +116,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var sessions = make(map[string]Session)
-
 	handler := &Handler{
-		Sessions: sessions,
-		State: "LOL",
+		Code: "",
 	}
 	port := "8080"
 	fmt.Println("starting server at :" + port)
