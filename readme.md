@@ -27,7 +27,8 @@ Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Pa
 
 # Using the applifiaction with web-connection.
 [Click it](https://fopshedule.herokuapp.com).
-For deployment, i used https://heroku.com with [ClearDB](https://www.cleardb.com)
+For deployment, i used https://heroku.com with [ClearDB](https://www.cleardb.com).
+Applification have a little restriction: it doesnt work with IPhone...
 
 # Essential Requirements.
 * google-account
