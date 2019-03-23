@@ -54,14 +54,19 @@ type Template struct {
 	Group  string
 }
 
-type Session struct{
+type User struct{
 	Client *http.Client
-	Code string
+	Email string
 }
+
+type UserInfo struct {
+	Email string `json:"email"`
+}
+
 type Handler struct {
-	Sessions map[string]Session
-	State string
+	Sessions map[string]User
 }
+
 type ServerError struct {
 	Error string
 }

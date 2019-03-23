@@ -19,7 +19,8 @@ var (
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
 	  </head>
 	  <body>
- 	<form action="http://127.0.0.1:8080/result" method="post" enctype="application/x-www-form-urlencoded">
+	  <p> Вы зашли с помощью {{.Email}} </p>
+ 	<form action="http://localhost:8080/result" method="post" enctype="application/x-www-form-urlencoded">
    <p><select name="group">
 	`
 

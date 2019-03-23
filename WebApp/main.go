@@ -10,7 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
-//	"encoding/json"
+	"io/ioutil"
+	"encoding/json"
 	"encoding/base64"
 	"crypto/rand"
 
@@ -21,10 +22,10 @@ import (
 
 func init() {
 	config = &oauth2.Config{
-		RedirectURL:  host + "/callback",
+		RedirectURL:  host + "/cookie",
 		ClientID:     GOOGLE_CLIENT_ID,
 		ClientSecret: GOOGLE_CLIENT_SECRET,
-		Scopes:       []string{"https://www.googleapis.com/auth/calendar"},
+		Scopes:       []string{"https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
 }
@@ -59,8 +60,7 @@ func (h *Handler) handlerMain(w http.ResponseWriter, r *http.Request) {
 
 var mu = &sync.Mutex{}
 
-func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	//TODO
+func getRandomString() (string){
 	size := 16
 	rb := make([]byte, size)
 	_, err := rand.Read(rb)
@@ -68,119 +68,124 @@ func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	oauthStateString := base64.URLEncoding.EncodeToString(rb)
-	h.State = oauthStateString
+	
+	return oauthStateString
+}
+
+func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	oauthStateString := getRandomString()
 	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
+	mu.Unlock()
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	size := 16
-	rb := make([]byte, size)
-	_, err := rand.Read(rb)
+func (h *Handler) handlerCookie(w http.ResponseWriter, r *http.Request){
+	mu.Lock()
+	_, err := r.Cookie("fopshedule")
+	if err == nil {
+		for _, c := range r.Cookies(){
+			if c.Name == "fopshedule"{
+				http.SetCookie(w, &http.Cookie{
+					Name: c.Name,
+					MaxAge: -1,
+					Expires: time.Now().Add(-100 * time.Minute),
+				})
+				if _, ok := h.Sessions[c.Value]; ok{
+					delete(h.Sessions, c.Value)
+				}
+			}
+		}
+	}
+	
+	fmt.Println("new cookie")
+	oauthStateString := getRandomString()
+	cook := &http.Cookie{
+			Name: "fopshedule",
+			Value: oauthStateString,
+//			Expires: time.Now().AddDate(0,0,1),
+			MaxAge: 120,
+			Path: host + "/callback",
+	}
+	http.SetCookie(w, cook)
+	
+	code := r.FormValue("code")
+	client, email, err := getClient(code)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
-	c, err := r.Cookie("session")
-	code := ""
-	
-	if err != nil {
-		fmt.Println("new cookie")
-		oauthStateString := base64.URLEncoding.EncodeToString(rb)
-		cook := &http.Cookie{
-				Name: "session",
-				Value: oauthStateString,
-				Expires: time.Now().AddDate(0,0,1),
-				Path: host + "/result",
-			}
-		http.SetCookie(w, cook)
-		code = r.FormValue("code")
-		mu.Lock()
-		st := h.Sessions[cook.Value]
-		st.Code = code
-		h.Sessions[cook.Value] = st
-		r.AddCookie(cook)
-		mu.Unlock()
-	} else {
-		if _, ok := h.Sessions[c.Value]; ok{
-			code = h.Sessions[c.Value].Code
-		} else{
-			fmt.Println("DELETE", c)
-			http.SetCookie(w, &http.Cookie{
-				Name: c.Name,
-				MaxAge: -1,
-				Expires: time.Now().Add(-100 * time.Minute),
-			})
-			http.Redirect(w, r, host + "/", http.StatusTemporaryRedirect)
-			return
-		}
-	}
-	fmt.Println(h.Sessions, c)
+	st := h.Sessions[cook.Value]
+	st.Client = client
+	st.Email = email
+	h.Sessions[cook.Value] = st
+	mu.Unlock()
 
-	for _, c := range r.Cookies(){
-		fmt.Println("COOKIES", c)
+	http.Redirect(w, r,host + "/callback", http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("fopshedule")
+	if err != nil{
+		http.Redirect(w, r,host + "/login", http.StatusTemporaryRedirect)
+		return
 	}
-	
+	if _, ok := h.Sessions[c.Value]; !ok{
+		http.Redirect(w, r,host + "/login", http.StatusTemporaryRedirect)
+		return
+	}
+
 	tmpl, err := template.ParseGlob("index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
-	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
+	mu.Lock()
+	email := h.Sessions[c.Value].Email
+	mu.Unlock()
+	tmpl.ExecuteTemplate(w, "index.html", User{Email: email})
+//	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
 }
 
 func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	c, err := r.Cookie("session")
+	c, err := r.Cookie("fopshedule")
 	if err != nil {
 		fmt.Fprintf(w, "no cookie")
 		return
 	}
-	group := r.FormValue("group")
-	fmt.Println("RES: ", h.Sessions)
-	for _, c := range r.Cookies(){
-		fmt.Println("res cookies", c)
-	}
-	
-	if ses, ok := h.Sessions[c.Value]; ok{
-		fmt.Println("code", ses.Code)
-		if ses.Code == ""{
-			http.Redirect(w, r, host + "/login", http.StatusTemporaryRedirect)
-			mu.Unlock()
-			return
-		}
-		fmt.Println(h.Sessions)
-		client := &http.Client{}
-		fmt.Println(h.Sessions[c.Value].Client)
-		if h.Sessions[c.Value].Client == nil {
-			client, err = getClient(ses.Code)
-			if err != nil {
-				log.Fatal(err)
-			}
-			st := h.Sessions[c.Value]
-			st.Client = client
-			h.Sessions[c.Value] = st
-		} else {
-			client = h.Sessions[c.Value].Client
-		}
-		mu.Unlock()
-		
-		go putData(client, group)
-		http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
+	if _, ok := h.Sessions[c.Value]; !ok{
+		http.Redirect(w, r,host + "/login", http.StatusTemporaryRedirect)
 		return
 	}
+	group := r.FormValue("group")
+
+	mu.Lock()
+	client := h.Sessions[c.Value].Client
 	mu.Unlock()
-	http.Redirect(w, r, host + "/callback", http.StatusTemporaryRedirect)
+	
+	go putData(client, group)
+	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
 }
 
-func getClient(code string) (*http.Client, error) {
+
+func getClient(code string) (*http.Client, string, error) {
 	client := &http.Client{}
 	token, err := config.Exchange(oauth2.NoContext, code)
 	if err != nil {
-		return client, fmt.Errorf("code exchange failed: %s", err.Error())
+		return client, "", fmt.Errorf("code exchange failed: %s", err.Error())
 	}
 	client = config.Client(oauth2.NoContext, token)
-
-	return client, nil
+	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer response.Body.Close()
+	contents, err := ioutil.ReadAll(response.Body)
+	if err != nil{
+		log.Fatal(err)
+	}
+	info := UserInfo{}
+	_ = json.Unmarshal(contents, &info)
+	fmt.Println(info)
+	return client, info.Email, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -193,17 +198,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handlerGoogleCallback(w, r)
 	case "/result":
 		h.handlerResult(w, r)
+	case "/cookie":
+		h.handlerCookie(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
 func main() {
-	var sessions = make(map[string]Session)
+	var sessions = make(map[string]User)
 
 	handler := &Handler{
 		Sessions: sessions,
-		State: "LOL",
 	}
 	port := "8080"
 	fmt.Println("starting server at :" + port)
