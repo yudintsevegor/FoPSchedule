@@ -60,8 +60,8 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 		Name:  "fopshedule",
 		Value: oauthStateString,
 		//			Expires: time.Now().AddDate(0,0,1),
-		MaxAge: 120,
-		Path:   host + "/callback",
+		MaxAge: 600,
+		Path:   "/callback",
 		Domain: domain,
 	}
 	http.SetCookie(w, cook)
