@@ -3,126 +3,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 )
-
-func init() {
-	config = &oauth2.Config{
-		RedirectURL:  host + "/callback",
-		ClientID:     GOOGLE_CLIENT_ID,
-		ClientSecret: GOOGLE_CLIENT_SECRET,
-		Scopes:       []string{"https://www.googleapis.com/auth/calendar"},
-		Endpoint:     google.Endpoint,
-	}
-}
-
-func (h *Handler) handlerMain(w http.ResponseWriter, r *http.Request) {
-	var htmlIndex = `
-	<html>
-	<head>
-	<style>
-	.block1{
-		position: fixed;
-		top: 50%;
-		width: 200px;
-		height: 100px;
-		left: 25%;
-	}
-	</style>
-	</head>
-	<body>
-		<div align="center">
-		<p>
-		Данное web-приложение позволяет загрузить расписание любой группы физфака МГУ в Google-Calendar. Программа работает в сыром режиме, возможны баги etc. Перед началом работы необходимо авторизироваться(кнопка ниже). Затем будет предложено выбрать группу из списка. Ожидание выгрузки составляет от 10 до 30 секунд. Наберитесь терпения.
-		</p>
-		</div>
-		<div align="center">
-		<a href="/login">Google Log In</a>
-		</div>
-	</body>
-	</html>`
-	fmt.Fprintf(w, htmlIndex)
-}
-
-func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-}
-
-func getClient(state string, code string) (*http.Client, error) {
-	client := &http.Client{}
-	if state != oauthStateString {
-		return client, fmt.Errorf("invalid oauth state")
-	}
-
-	token, err := config.Exchange(oauth2.NoContext, code)
-	if err != nil {
-		return client, fmt.Errorf("code exchange failed: %s", err.Error())
-	}
-
-	client = config.Client(oauth2.NoContext, token)
-
-	return client, nil
-}
-
-func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	group := r.Form["group"][0]
-
-	//	fmt.Fprintln(w, "Starting to upload shedule to your calendar")
-	//	fmt.Fprintln(w, group)
-
-	client, err := getClient(oauthStateString, h.Code)
-	if err != nil {
-		log.Fatal(err)
-	}
-	go putData(client, group)
-	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
-}
-
-func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	code := r.FormValue("code")
-	h.Code = code
-
-	tmpl, err := template.ParseGlob("index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	tmpl.ExecuteTemplate(w, "index.html", struct{}{})
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/":
-		h.handlerMain(w, r)
-	case "/login":
-		h.handlerGoogleLogin(w, r)
-	case "/callback":
-		h.handlerGoogleCallback(w, r)
-	case "/result":
-		h.handlerResult(w, r)
-	default:
-		w.WriteHeader(http.StatusNotFound)
-	}
-}
-
-func main() {
-	handler := &Handler{
-		Code: "",
-	}
-	port := "8080"
-	fmt.Println("starting server at :" + port)
-	http.ListenAndServe(":"+port, handler)
-}
 
 func putData(client *http.Client, group string) {
 	srv, err := calendar.New(client)

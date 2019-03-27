@@ -1,9 +1,5 @@
 package main
 
-import (
-	"text/template"
-)
-
 var (
 	head = `
 	<!DOCTYPE html>
@@ -20,24 +16,5 @@ var (
 	  </head>
 	  <body>
 	  <p> Вы зашли с помощью {{.Email}} </p>
- 	<form action="http://localhost:8080/result" method="post" enctype="application/x-www-form-urlencoded">
-   <p><select name="group">
 	`
-
-	end = `
-   </select></p>
-   <p><input type="submit" value="Отправить"></p>
-	</body>
-	</html>
-	`
-
-	endOpt = `</optgroup>`
-
-	label = template.Must(template.New("").Parse(`
-    	<optgroup label="{{.Course}} курс">
-	`))
-
-	option = template.Must(template.New("").Parse(`
-    	<option value="{{.Group}}">{{.Group}}</option>
-	`))
 )

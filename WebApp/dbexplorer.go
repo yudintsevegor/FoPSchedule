@@ -22,13 +22,8 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 		tablesNames = append(tablesNames, tableName)
 	}
 	rowsTb.Close()
-	//	for _, key := range tablesNames {
-	//		fmt.Println(key)
-	//	}
 
 	var allWeek = make([][]Subject, 0, 6)
-	//	for _, key := range tablesNames {
-	//		var allWeek = make([][]Subject, 0, 6)
 	req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", group)
 	rows, err := db.Query(req)
 	if err != nil {
@@ -43,16 +38,7 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 		les := parsePercent(rawLes)
 		allWeek = append(allWeek, les)
 	}
-	/*
-			fmt.Println("==================================" + group + "==============================")
-			for i, v := range allWeek {
-				fmt.Println("===========", i+1, "========")
-				for _, val := range v {
-					fmt.Println(val)
-				}
-			}
-		}
-	*/
+
 	return allWeek
 }
 
@@ -69,25 +55,3 @@ func parsePercent(arr []string) []Subject {
 
 	return result
 }
-
-//func main() {
-//	db, err := sql.Open("mysql", DSN)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	err = db.Ping()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	group := "401"
-//	allWeek := dbExplorer(db, group)
-//
-//	fmt.Println("==================================" + group + "==============================")
-//	for i, v := range allWeek {
-//		fmt.Println("===========", i+1, "========")
-//		for _, val := range v {
-//			fmt.Println(val)
-//		}
-//	}
-//}
-//

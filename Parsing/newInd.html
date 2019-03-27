@@ -1,0 +1,13 @@
+ 	<form action="http://localhost:8080/result" method="post" enctype="application/x-www-form-urlencoded">
+   <p><select name="group">
+	{{range $key, $val := .Groups}}
+    	<optgroup label="{{$key}} курс">
+		{{range $v := $val}}
+		<option value="{{$v}}">{{$v}}</option>
+		{{end}}
+		</optgroup>
+	{{end}}
+   </select></p>
+   <p><input type="submit" value="Отправить"></p>
+	</body>
+	</html>

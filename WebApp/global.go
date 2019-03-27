@@ -1,8 +1,9 @@
 package main
 
 import (
-	"regexp"
 	"net/http"
+	"regexp"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -54,9 +55,9 @@ type Template struct {
 	Group  string
 }
 
-type User struct{
+type User struct {
 	Client *http.Client
-	Email string
+	Email  string
 }
 
 type UserInfo struct {
@@ -72,6 +73,31 @@ type ServerError struct {
 }
 
 var (
+	mu        = &sync.Mutex{}
+	htmlIndex = `
+	<html>
+	<head>
+	<style>
+	.block1{
+		position: fixed;
+		top: 50%;
+		width: 200px;
+		height: 100px;
+		left: 25%;
+	}
+	</style>
+	</head>
+	<body>
+		<div align="center">
+		<p>
+		Данное web-приложение позволяет загрузить расписание любой группы физфака МГУ в Google-Calendar. Программа работает в сыром режиме, возможны баги etc. Перед началом работы необходимо авторизироваться(кнопка ниже). Затем будет предложено выбрать группу из списка. Ожидание выгрузки составляет от 10 до 30 секунд. Наберитесь терпения.
+		</p>
+		</div>
+		<div align="center">
+		<a href="/login">Google Log In</a>
+		</div>
+	</body>
+	</html>`
 	host        = "http://localhost:8080"
 	urlCalendar = "https://calendar.google.com"
 	config      *oauth2.Config
@@ -79,9 +105,11 @@ var (
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 
-	reUpp  = regexp.MustCompile("([А-Я]){5,}")
+	//TODO: change to strings.Split()
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reAt   = regexp.MustCompile("(.*)@(.*)")
+
+	reUpp  = regexp.MustCompile("([А-Я]){5,}")
 	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
 	reDash = regexp.MustCompile(`(\s\-\s)`)
 

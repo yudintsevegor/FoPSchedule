@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
+	//	"strconv"
+	"html/template"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -68,22 +69,18 @@ func main() {
 		i := getCourse(tableName)
 		tablesNames[i-1] = append(tablesNames[i-1], tableName)
 	}
-
 	out, err := os.Create(html)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Fprintf(out, head)
-	for j, course := range tablesNames {
-		k := strconv.Itoa(j + 1)
-		label.Execute(out, Template{textCourse[k], ""})
-		for _, group := range course {
-			option.Execute(out, Template{"", group})
-		}
-		fmt.Fprintf(out, endOpt)
-	}
-	fmt.Fprintf(out, end)
+	tmpl := template.Must(template.ParseFiles("newInd.html"))
+	tmpl.Execute(out, struct {
+		Groups [][]string
+	}{
+		tablesNames,
+	})
 }
 
 func getCourse(tableName string) int {
