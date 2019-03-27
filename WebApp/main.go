@@ -131,9 +131,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/callback":
 		h.handleGoogleCallback(w, r)
 	case "/result":
-		h.handlerResult(w, r)
+		h.handleResult(w, r)
 	case "/cookie":
-		h.handlerCookie(w, r)
+		h.handleCookie(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
