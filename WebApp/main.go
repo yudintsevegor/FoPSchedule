@@ -71,10 +71,10 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	mu.Lock()
 	st := h.Sessions[cook.Value]
 	st.Client = client
 	st.Email = email
-	mu.Lock()
 	h.Sessions[cook.Value] = st
 	mu.Unlock()
 
