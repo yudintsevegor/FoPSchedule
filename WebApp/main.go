@@ -25,17 +25,17 @@ func init() {
 	}
 }
 
-func (h *Handler) handlerMain(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleMain(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, htmlIndex)
 }
 
-func (h *Handler) handlerGoogleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	oauthStateString := getRandomString()
 	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) handlerCookie(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie("fopshedule")
 	if err == nil {
 		for _, c := range r.Cookies() {
@@ -81,7 +81,7 @@ func (h *Handler) handlerCookie(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, host+"/callback", http.StatusTemporaryRedirect)
 }
 
-func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("fopshedule")
 	if err != nil {
 		http.Redirect(w, r, host+"/login", http.StatusTemporaryRedirect)
@@ -102,7 +102,7 @@ func (h *Handler) handlerGoogleCallback(w http.ResponseWriter, r *http.Request) 
 	tmpl.ExecuteTemplate(w, "index.html", User{Email: email})
 }
 
-func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("fopshedule")
 	if err != nil {
 		fmt.Fprintf(w, "no cookie")
@@ -125,11 +125,11 @@ func (h *Handler) handlerResult(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/":
-		h.handlerMain(w, r)
+		h.handleMain(w, r)
 	case "/login":
-		h.handlerGoogleLogin(w, r)
+		h.handleGoogleLogin(w, r)
 	case "/callback":
-		h.handlerGoogleCallback(w, r)
+		h.handleGoogleCallback(w, r)
 	case "/result":
 		h.handlerResult(w, r)
 	case "/cookie":
