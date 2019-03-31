@@ -3,14 +3,14 @@ This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.r
 
 
 # Content of repository.
-* branch: master (main branch with web-applification)
+* branch: master (main branch with web-application)
     - `/Parsing` (files for shedule of faculty of physics parsing)
 	- `/Shedule` (files for console-representation of shedule)
 	- `/debug` (there are not important files)
-	- `/WebApp` (main directory with web-applification)
+	- `/WebApp` (main directory with web-application)
 	- `TODO.md`
 	- `readme.md`
-* branch: console (with console-applification)
+* branch: console (with console-application)
 
 # Opportunities.
 The program allows you to upload the schedule of any group(in scope the Faculty of Physics) to your google-calendar using your google-account.
@@ -23,7 +23,7 @@ During development, i used following packages:
 * Standart libs of golang
 
 # How to launch it on local machine?
-Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Parsing.sh`. Thirdly, using `/WebApp`, launch `sh WebApp.sh`, after you can use `localhost:8080` for using applification. If you want to check correctness of my parsing, you can use `/Shedule`, launch `Shedule.sh`for console-representation.
+Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Parsing.sh`. Thirdly, using `/WebApp`, launch `sh WebApp.sh`, after you can use `localhost:8080` for using application. If you want to check correctness of my parsing, you can use `/Shedule`, launch `Shedule.sh`for console-representation.
 
 # Using the applifiaction with web-connection.
 [Click it](https://fopshedule.herokuapp.com).
@@ -33,4 +33,4 @@ For deployment, i used https://heroku.com with [ClearDB](https://www.cleardb.com
 * google-account
 
 # P.S.
-This is a very raw, but working version of my applification. I need to upgrade front-end of app(sorry, but i'm only backend developer...). Also, i need to add some features. It's comming soon...
+This is a very raw, but working version of my application. I need to upgrade front-end of app(sorry, but i'm only backend developer...). Also, i need to add some features. It's comming soon...
