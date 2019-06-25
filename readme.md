@@ -25,7 +25,7 @@ During development, i used following packages:
 # How to launch it on local machine?
 Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Parsing.sh`. Thirdly, using `/WebApp`, launch `sh WebApp.sh`, after you can use `localhost:8080` for using application. If you want to check correctness of my parsing, you can use `/Shedule`, launch `Shedule.sh`for console-representation.
 
-# Using the applifiaction with web-connection.
+# Using the application with web-connection.
 [Click it](https://fopschedule.herokuapp.com).
 For deployment, i used [Heroku](https://heroku.com) with [ClearDB](https://www.cleardb.com).
 
