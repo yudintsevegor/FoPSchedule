@@ -1,4 +1,4 @@
-# Shedule of Faculty of Physics && Google-Calendar.
+# Schedule of Faculty of Physics && Google-Calendar.
 This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.ru/table/4/1.htm) and Google-Calendar(https://developers.google.com/calendar) interaction. All my app is written with golang. For storage data i used MySQL.
 
 
