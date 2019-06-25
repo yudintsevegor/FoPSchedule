@@ -27,7 +27,7 @@ Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Pa
 
 # Using the applifiaction with web-connection.
 [Click it](https://fopschedule.herokuapp.com).
-For deployment, i used https://heroku.com with [ClearDB](https://www.cleardb.com).
+For deployment, i used [Heroku](https://heroku.com) with [ClearDB](https://www.cleardb.com).
 
 # Essential Requirements.
 * google-account
