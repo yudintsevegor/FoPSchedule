@@ -1,8 +1,12 @@
 package main
 
 import (
+	"net/http"
 	"regexp"
+	"sync"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 type Subject struct {
@@ -46,10 +50,64 @@ type DataToParsingAt struct {
 	SemesterEnd string
 }
 
+type Template struct {
+	Course string
+	Group  string
+}
+
+type User struct {
+	Client     *http.Client
+	Email      string
+	PathAction string
+}
+
+type UserInfo struct {
+	Email string `json:"email"`
+}
+
+type Handler struct {
+	Sessions map[string]User
+}
+
+type ServerError struct {
+	Error string
+}
+
 var (
+	cookieName = "fopschedule"
+	mu        = &sync.Mutex{}
+	htmlIndex = `
+	<html>
+	<head>
+	<style>
+	.block1{
+		position: fixed;
+		top: 50%;
+		width: 200px;
+		height: 100px;
+		left: 25%;
+	}
+	</style>
+	</head>
+	<body>
+		<div align="center">
+		<p>
+		Данное web-приложение позволяет загрузить расписание любой группы физфака МГУ в Google-Calendar. Программа работает в сыром режиме, возможны баги etc. Перед началом работы необходимо авторизироваться(кнопка ниже). Затем будет предложено выбрать группу из списка. Ожидание выгрузки составляет от 10 до 30 секунд. Наберитесь терпения.
+		</p>
+		</div>
+		<div align="center">
+		<a href="/login">Google Log In</a>
+		</div>
+	</body>
+	</html>`
+
+	urlCalendar = "https://calendar.google.com"
+	config      *oauth2.Config
+
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 
+	//TODO: change to strings.Split()
 	reUpp  = regexp.MustCompile("([А-Я]){5,}")
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reAt   = regexp.MustCompile("(.*)@(.*)")
@@ -73,10 +131,19 @@ var (
 
 	cases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
 
+	testCourse = map[string]string{
+		"1": "Первый",
+		"2": "Второй",
+		"3": "Третий",
+		"4": "Четвертый",
+		"5": "Пятый",
+		"6": "Шестой",
+	}
+
 	subGroups = map[string][]string{
 		"341":  []string{"341а", "341б"},
 		"441":  []string{"441а", "441б"},
-		"141М": []string{"141Mа", "141Мб"},
+		"141М": []string{"141Ма", "141Мб"},
 		"241М": []string{"241Ма", "241Мб"},
 		"316":  []string{"316а", "316б"},
 		"416":  []string{"416а", "416б"},

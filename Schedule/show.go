@@ -22,9 +22,6 @@ func dbExplorer(db *sql.DB) [][]Subject {
 		tablesNames = append(tablesNames, tableName)
 	}
 	rowsTb.Close()
-	//	for _, key := range tablesNames {
-	//		fmt.Println(key)
-	//	}
 
 	var allWeek = make([][]Subject, 0, 6)
 	for _, group := range tablesNames {
@@ -40,6 +37,7 @@ func dbExplorer(db *sql.DB) [][]Subject {
 			les := parsePercent(rawLes)
 			allWeek = append(allWeek, les)
 		}
+		
 		fmt.Println("==================================" + group + "==============================")
 		for i, v := range allWeek {
 			fmt.Println("===========", i+1, "========")
@@ -76,11 +74,4 @@ func main() {
 	}
 	_ = dbExplorer(db)
 
-	//	fmt.Println("==================================" + group + "==============================")
-	//	for i, v := range allWeek {
-	//		fmt.Println("===========", i+1, "========")
-	//		for _, val := range v {
-	//			fmt.Println(val)
-	//		}
-	//	}
 }
