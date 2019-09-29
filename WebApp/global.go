@@ -56,8 +56,9 @@ type Template struct {
 }
 
 type User struct {
-	Client *http.Client
-	Email  string
+	Client     *http.Client
+	Email      string
+	PathAction string
 }
 
 type UserInfo struct {
@@ -73,6 +74,7 @@ type ServerError struct {
 }
 
 var (
+	cookieName = "fopschedule"
 	mu        = &sync.Mutex{}
 	htmlIndex = `
 	<html>
@@ -98,7 +100,7 @@ var (
 		</div>
 	</body>
 	</html>`
-	host        = "http://localhost:8080"
+
 	urlCalendar = "https://calendar.google.com"
 	config      *oauth2.Config
 
@@ -106,10 +108,9 @@ var (
 	quesStr = " ( ?, ?, ?, ?, ? ) "
 
 	//TODO: change to strings.Split()
+	reUpp  = regexp.MustCompile("([А-Я]){5,}")
 	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
 	reAt   = regexp.MustCompile("(.*)@(.*)")
-
-	reUpp  = regexp.MustCompile("([А-Я]){5,}")
 	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
 	reDash = regexp.MustCompile(`(\s\-\s)`)
 

@@ -38,7 +38,7 @@ func dbExplorer(db *sql.DB, group string) [][]Subject {
 		les := parsePercent(rawLes)
 		allWeek = append(allWeek, les)
 	}
-
+	
 	return allWeek
 }
 
@@ -55,3 +55,4 @@ func parsePercent(arr []string) []Subject {
 
 	return result
 }
+

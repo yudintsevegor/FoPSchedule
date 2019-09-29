@@ -1,4 +1,4 @@
- 	<form action="http://localhost:8080/result" method="post" enctype="application/x-www-form-urlencoded">
+<form action={{.PathAction}} method="post" enctype="application/x-www-form-urlencoded">
    <p><select name="group">
 	{{range $key, $val := .Groups}}
     	<optgroup label="{{$key}} курс">

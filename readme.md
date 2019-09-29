@@ -5,7 +5,7 @@ This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.r
 # Content of repository.
 * branch: master (main branch with web-application)
     - `/Parsing` (files for shedule of faculty of physics parsing)
-	- `/Shedule` (files for console-representation of shedule)
+	- `/Schedule` (files for console-representation of shedule)
 	- `/debug` (there are not important files)
 	- `/WebApp` (main directory with web-application)
 	- `TODO.md`
@@ -23,7 +23,7 @@ During development, i used following packages:
 * Standart libs of golang
 
 # How to launch it on local machine?
-Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Parsing.sh`. Thirdly, using `/WebApp`, launch `sh WebApp.sh`, after you can use `localhost:8080` for using application. If you want to check correctness of my parsing, you can use `/Shedule`, launch `Shedule.sh`for console-representation.
+Firstly, you need to install mysql DB. Secondly, using `/Parsing`, launch `sh Parsing.sh`. Thirdly, using `/WebApp`, launch `sh WebApp.sh`, after you can use `localhost:8080` for using application. If you want to check correctness of my parsing, you can use `/Schedule`, launch `Schedule.sh`for console-representation.
 
 # Using the application with web-connection.
 [Click it](https://fopschedule.herokuapp.com).
