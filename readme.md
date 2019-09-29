@@ -6,7 +6,6 @@ This is a little project for shedule of Faculty of Physics(http://ras.phys.msu.r
 * branch: master (main branch with web-application)
     - `/Parsing` (files for shedule of faculty of physics parsing)
 	- `/Schedule` (files for console-representation of shedule)
-	- `/debug` (there are not important files)
 	- `/WebApp` (main directory with web-application)
 	- `TODO.md`
 	- `readme.md`
