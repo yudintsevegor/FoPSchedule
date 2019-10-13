@@ -1,108 +1,22 @@
 package main
 
 import (
-	"net/http"
 	"regexp"
 	"sync"
-	"time"
 
 	"golang.org/x/oauth2"
 )
 
-type Subject struct {
-	Name   string
-	Lector string
-	Room   string
-	Parity string
-}
-
-type Department struct {
-	Number  string
-	Lessons []Subject
-}
-
-type DataToParsingLine struct {
-	Departments      []Department
-	AllGroups        []string
-	ResultFromReqexp []string
-	InsertedGroups   []string
-	Lesson           Subject
-	RegexpInterval   *regexp.Regexp
-}
-
-type Interval struct {
-	Start int
-	End   int
-}
-
-type LessonRange struct {
-	Start string
-	End   string
-}
-
-type DataToParsingAt struct {
-	Lesson      Subject
-	Number      int
-	Parity      bool
-	IsAllDay    bool
-	StartTime   string
-	Time        time.Time
-	SemesterEnd string
-}
-
-type Template struct {
-	Course string
-	Group  string
-}
-
-type User struct {
-	Client     *http.Client
-	Email      string
-	PathAction string
-}
-
-type UserInfo struct {
-	Email string `json:"email"`
-}
-
-type Handler struct {
-	Sessions map[string]User
-}
-
-type ServerError struct {
-	Error string
-}
-
-var (
+const (
+	cookieURL  = "/cookie"
 	cookieName = "fopschedule"
-	mu        = &sync.Mutex{}
-	htmlIndex = `
-	<html>
-	<head>
-	<style>
-	.block1{
-		position: fixed;
-		top: 50%;
-		width: 200px;
-		height: 100px;
-		left: 25%;
-	}
-	</style>
-	</head>
-	<body>
-		<div align="center">
-		<p>
-		Данное web-приложение позволяет загрузить расписание любой группы физфака МГУ в Google-Calendar. Программа работает в сыром режиме, возможны баги etc. Перед началом работы необходимо авторизироваться(кнопка ниже). Затем будет предложено выбрать группу из списка. Ожидание выгрузки составляет от 10 до 30 секунд. Наберитесь терпения.
-		</p>
-		</div>
-		<div align="center">
-		<a href="/login">Google Log In</a>
-		</div>
-	</body>
-	</html>`
 
 	urlCalendar = "https://calendar.google.com"
-	config      *oauth2.Config
+)
+
+var (
+	mu     = &sync.Mutex{}
+	config *oauth2.Config
 
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
@@ -193,6 +107,7 @@ var (
 		"ЦФА":              "",
 		"Ауд. им. Хохлова": "",
 	}
+
 	moscowTime    = "+03:00"
 	timeIntervals = map[int]LessonRange{
 		0: {Start: "T9:00:00" + moscowTime, End: "T10:35:00" + moscowTime},

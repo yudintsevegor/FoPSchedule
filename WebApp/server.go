@@ -17,16 +17,21 @@ import (
 
 func init() {
 	config = &oauth2.Config{
-		RedirectURL:  host + "/cookie",
-		ClientID:     GOOGLE_CLIENT_ID,
-		ClientSecret: GOOGLE_CLIENT_SECRET,
+		RedirectURL:  host + cookieURL,
+		ClientID:     googleClientID,
+		ClientSecret: googleClientSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
 }
 
 func (h *Handler) handleMain(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, htmlIndex)
+	fileName := "mainPage.html"
+	tmpl, err := template.ParseGlob(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpl.ExecuteTemplate(w, fileName, nil)
 }
 
 func (h *Handler) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +66,7 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 		Name:  cookieName,
 		Value: oauthStateString,
 	}
-	
+
 	http.SetCookie(w, cook)
 	r.AddCookie(cook)
 	c, err := r.Cookie(cookieName)
@@ -81,7 +86,7 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 	st.Email = email
 	h.Sessions[cook.Value] = st
 	mu.Unlock()
-	
+
 	http.Redirect(w, r, host+"/callback", http.StatusSeeOther)
 }
 
@@ -91,12 +96,12 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error in '/callback': ", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte("Error, " + err.Error()))
-		http.Redirect(w, r, host + "/login", http.StatusSeeOther)
+		http.Redirect(w, r, host+"/login", http.StatusSeeOther)
 		return
 	}
 	if _, ok := h.Sessions[c.Value]; !ok {
 		fmt.Println("no value at map")
-		http.Redirect(w, r, host + "/login", http.StatusSeeOther)
+		http.Redirect(w, r, host+"/login", http.StatusSeeOther)
 		return
 	}
 
@@ -117,7 +122,7 @@ func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "no cookie")
 		return
 	}
-	
+
 	mu.Lock()
 	_, ok := h.Sessions[c.Value]
 	mu.Unlock()
@@ -125,7 +130,7 @@ func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, host+"/login", http.StatusTemporaryRedirect)
 		return
 	}
-	
+
 	group := r.FormValue("group")
 	mu.Lock()
 	client := h.Sessions[c.Value].Client
@@ -154,10 +159,9 @@ func getClient(code string) (*http.Client, string, error) {
 	info := UserInfo{}
 	_ = json.Unmarshal(contents, &info)
 	fmt.Println(info)
-	
+
 	return client, info.Email, nil
 }
-
 
 func getRandomString() string {
 	size := 16
