@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"regexp"
+	"sync"
 	"time"
 )
 
@@ -65,6 +66,7 @@ type UserInfo struct {
 
 type Handler struct {
 	Sessions map[string]User
+	Mutex    *sync.Mutex
 }
 
 type ServerError struct {

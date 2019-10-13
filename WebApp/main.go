@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"sync"
 )
 
 const (
@@ -31,6 +32,7 @@ func main() {
 	sessions := make(map[string]User)
 	handle := &Handler{
 		Sessions: sessions,
+		Mutex:    &sync.Mutex{},
 	}
 
 	fmt.Println("starting server at :" + port)

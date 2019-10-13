@@ -2,31 +2,18 @@ package main
 
 import (
 	"regexp"
-	"sync"
-
-	"golang.org/x/oauth2"
 )
 
 const (
 	cookieURL  = "/cookie"
 	cookieName = "fopschedule"
 
-	urlCalendar = "https://calendar.google.com"
-)
+	mainHTMLPage = "mainPage.html"
 
-var (
-	mu     = &sync.Mutex{}
-	config *oauth2.Config
+	urlCalendar = "https://calendar.google.com"
 
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
-
-	//TODO: change to strings.Split()
-	reUpp  = regexp.MustCompile("([А-Я]){5,}")
-	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
-	reAt   = regexp.MustCompile("(.*)@(.*)")
-	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
-	reDash = regexp.MustCompile(`(\s\-\s)`)
 
 	practice      = "Преддипломная практика"
 	WAR           = "ВОЕННАЯ ПОДГОТОВКА"
@@ -44,15 +31,26 @@ var (
 	astr          = "астр."
 
 	cases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
+)
 
-	testCourse = map[string]string{
-		"1": "Первый",
-		"2": "Второй",
-		"3": "Третий",
-		"4": "Четвертый",
-		"5": "Пятый",
-		"6": "Шестой",
-	}
+var (
+	// TODO: change to strings.Split()
+	reUpp  = regexp.MustCompile("([А-Я]){5,}")
+	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
+	reAt   = regexp.MustCompile("(.*)@(.*)")
+	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
+	reDash = regexp.MustCompile(`(\s\-\s)`)
+
+	/*
+		testCourse = map[string]string{
+			"1": "Первый",
+			"2": "Второй",
+			"3": "Третий",
+			"4": "Четвертый",
+			"5": "Пятый",
+			"6": "Шестой",
+		}
+	*/
 
 	subGroups = map[string][]string{
 		"341":  []string{"341а", "341б"},

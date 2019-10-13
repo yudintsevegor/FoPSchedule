@@ -15,6 +15,8 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+var config *oauth2.Config
+
 func init() {
 	config = &oauth2.Config{
 		RedirectURL:  host + cookieURL,
@@ -26,19 +28,18 @@ func init() {
 }
 
 func (h *Handler) handleMain(w http.ResponseWriter, r *http.Request) {
-	fileName := "mainPage.html"
-	tmpl, err := template.ParseGlob(fileName)
+	tmpl, err := template.ParseGlob(mainHTMLPage)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tmpl.ExecuteTemplate(w, fileName, nil)
+	tmpl.ExecuteTemplate(w, mainHTMLPage, nil)
 }
 
 func (h *Handler) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
+	h.Mutex.Lock()
 	oauthStateString := getRandomString()
 	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
-	mu.Unlock()
+	h.Mutex.Unlock()
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
@@ -52,10 +53,11 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 					MaxAge:  -1,
 					Expires: time.Now().Add(-100 * time.Minute),
 				})
+
 				if _, ok := h.Sessions[c.Value]; ok {
-					mu.Lock()
+					h.Mutex.Lock()
 					delete(h.Sessions, c.Value)
-					mu.Unlock()
+					h.Mutex.Unlock()
 				}
 			}
 		}
@@ -75,17 +77,19 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Println("added cookie: ", c)
 	}
+
 	code := r.FormValue("code")
 	client, email, err := getClient(code)
 	if err != nil {
 		log.Fatal(err)
 	}
-	mu.Lock()
+
+	h.Mutex.Lock()
 	st := h.Sessions[cook.Value]
 	st.Client = client
 	st.Email = email
 	h.Sessions[cook.Value] = st
-	mu.Unlock()
+	h.Mutex.Unlock()
 
 	http.Redirect(w, r, host+"/callback", http.StatusSeeOther)
 }
@@ -99,6 +103,7 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, host+"/login", http.StatusSeeOther)
 		return
 	}
+
 	if _, ok := h.Sessions[c.Value]; !ok {
 		fmt.Println("no value at map")
 		http.Redirect(w, r, host+"/login", http.StatusSeeOther)
@@ -109,9 +114,9 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mu.Lock()
+	h.Mutex.Lock()
 	email := h.Sessions[c.Value].Email
-	mu.Unlock()
+	h.Mutex.Unlock()
 	path := host + "/result"
 	tmpl.ExecuteTemplate(w, "index.html", User{Email: email, PathAction: path})
 }
@@ -123,18 +128,18 @@ func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.Lock()
+	h.Mutex.Lock()
 	_, ok := h.Sessions[c.Value]
-	mu.Unlock()
+	h.Mutex.Unlock()
 	if !ok {
 		http.Redirect(w, r, host+"/login", http.StatusTemporaryRedirect)
 		return
 	}
 
 	group := r.FormValue("group")
-	mu.Lock()
+	h.Mutex.Lock()
 	client := h.Sessions[c.Value].Client
-	mu.Unlock()
+	h.Mutex.Unlock()
 
 	go putData(client, group)
 	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
@@ -152,12 +157,17 @@ func getClient(code string) (*http.Client, string, error) {
 		log.Fatal(err)
 	}
 	defer response.Body.Close()
+
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	info := UserInfo{}
-	_ = json.Unmarshal(contents, &info)
+	err = json.Unmarshal(contents, &info)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(info)
 
 	return client, info.Email, nil
