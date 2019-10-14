@@ -9,6 +9,7 @@ const (
 	cookieName = "fopschedule"
 
 	mainHTMLPage = "mainPage.html"
+	indexHTMLPage = "index.html"
 
 	urlCalendar = "https://calendar.google.com"
 
@@ -30,7 +31,7 @@ const (
 	NIS           = "НИС"
 	astr          = "астр."
 
-	cases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
+	lessonCases = WAR + " " + war + " " + MFK + " " + mfk + " " + MFKabbr
 )
 
 var (

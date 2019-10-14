@@ -133,7 +133,7 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 		return result, true
 	}
 
-	if strings.Contains(cases, subject.Name) {
+	if strings.Contains(lessonCases, subject.Name) {
 		return result, true
 	}
 
