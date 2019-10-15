@@ -183,8 +183,23 @@ func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 	client := h.Sessions[c.Value].Client
 	h.Mutex.Unlock()
 
-	go putData(client, r.FormValue("group"))
-	http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
+	group := r.FormValue("group")
+	if group == "" {
+		err := errors.New("doesnt match group")
+		log.Println(err)
+		errorHandler(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	go func() {
+		if err := putData(client, group); err != nil {
+			log.Println(err)
+			errorHandler(w, http.StatusInternalServerError, err)
+			return
+		}
+	}()
+
+	// http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
 }
 
 func errorHandler(w http.ResponseWriter, statusCode int, err error) {

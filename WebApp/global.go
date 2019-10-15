@@ -8,10 +8,11 @@ const (
 	cookieURL  = "/cookie"
 	cookieName = "fopschedule"
 
-	mainHTMLPage = "mainPage.html"
+	mainHTMLPage  = "mainPage.html"
 	indexHTMLPage = "index.html"
 
-	urlCalendar = "https://calendar.google.com"
+	calendarName = "Shedule"
+	urlCalendar  = "https://calendar.google.com"
 
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
@@ -36,9 +37,9 @@ const (
 
 var (
 	// TODO: change to strings.Split()
-	reUpp  = regexp.MustCompile("([А-Я]){5,}")
-	rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
-	reAt   = regexp.MustCompile("(.*)@(.*)")
+	reUpp = regexp.MustCompile("([А-Я]){5,}")
+	// rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
+	// reAt   = regexp.MustCompile("(.*)@(.*)")
 	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
 	reDash = regexp.MustCompile(`(\s\-\s)`)
 

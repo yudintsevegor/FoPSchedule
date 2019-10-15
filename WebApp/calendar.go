@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"net/http"
 
 	"regexp"
@@ -13,57 +12,74 @@ import (
 	"google.golang.org/api/calendar/v3"
 )
 
-func putData(client *http.Client, group string) {
+func putData(client *http.Client, group string) error {
 	srv, err := calendar.New(client)
 	if err != nil {
-		log.Fatalf("Unable to retrieve Calendar client: %v", err)
+		return err
 	}
 
-	// ====================================================================
-	// Get data from database
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
-		log.Fatal(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	allWeek := dbExplorer(db, group)
+	if err = db.Ping(); err != nil {
+		return err
+	}
+
+	allWeek, err := dbExplorer(db, group)
+	if err != nil {
+		return err
+	}
 
 	clndr := &calendar.Calendar{
-		Summary: "Shedule" + group,
+		Summary: calendarName + group,
 	}
-	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
 
+	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	fmt.Println("==========")
-	//	calendarId := "primary" // Use account shedule
+
+	//	calendarId := "primary" // Use account calendar
 	calendarId := insertedCalendar.Id
 
-	var isOdd bool
-	var day int
-	var endSemester string
+	var (
+		isOdd       bool
+		day         int
+		endSemester string
+	)
 
-	var endSummer = "0601"
-	var endWinter = "1231"
+	const (
+		endSummer = "0601"
+		endWinter = "1231"
+	)
 
 	timeNow := time.Now()
 	year := timeNow.Year()
 	month := int(timeNow.Month())
 
-	if month > 0 && month < 8 {
+	switch {
+	case month > 0 && month < 8:
 		month = 2
 		day = 7
 		endSemester = fmt.Sprintf("%v", year) + endSummer
-	} else if month > 7 && month < 13 {
+	case month > 7 && month < 13:
 		month = 9
 		day = 1
 		endSemester = fmt.Sprintf("%v", year) + endWinter
 	}
+	/*
+		if  month > 0 && month < 8{
+			month = 2
+			day = 7
+			endSemester = fmt.Sprintf("%v", year) + endSummer
+		} else if month > 7 && month < 13 {
+			month = 9
+			day = 1
+			endSemester = fmt.Sprintf("%v", year) + endWinter
+		}
+	*/
 
 	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 	firstDay := int(t.Weekday()) - 1
@@ -74,6 +90,7 @@ func putData(client *http.Client, group string) {
 			isOdd = !isOdd
 			t = t.AddDate(0, 0, -7)
 		}
+
 		lessonStart := t.Format("2006-01-02")
 		for i, lesson := range allWeek[j] {
 			st := DataToParsingAt{
@@ -88,16 +105,20 @@ func putData(client *http.Client, group string) {
 			if isEmpty {
 				continue
 			}
+
 			for _, event := range events {
 				event, err = srv.Events.Insert(calendarId, event).Do()
 				if err != nil {
-					log.Fatalf("Unable to create event. %v\n", err)
+					return err
 				}
 				fmt.Printf("Event created: %s\n", event.HtmlLink)
 			}
 		}
+
 		t = t.AddDate(0, 0, 1)
 	}
+
+	return nil
 }
 
 func (st *Subject) parseSharp() []Subject {
@@ -137,93 +158,109 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 		return result, true
 	}
 
-	if strings.Contains(subject.Name, "@") {
-		st.IsAllDay = false
+	if !strings.Contains(subject.Name, "@") {
+		fromSharp := make([]Subject, 0, 1)
+		if subject.Name == practice {
+			return result, true
+		}
 
-		regName := reAt.FindStringSubmatch(subject.Name)
-		regLector := reAt.FindStringSubmatch(subject.Lector)
-		regRoom := reAt.FindStringSubmatch(subject.Room)
-
-		var oddLessonStart string
-		var evenLessonStart string
-
-		if isOdd {
-			oddLessonStart = lessonStart
-			evenLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
+		if strings.Contains(subject.Name, "#") {
+			fromSharp = subject.parseSharp()
 		} else {
-			oddLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
-			evenLessonStart = lessonStart
+			fromSharp = append(fromSharp, subject)
 		}
 
-		oddSubject := Subject{Name: regName[1], Lector: regLector[1], Room: regRoom[1], Parity: oddLessonStart}
-		evenSubject := Subject{Name: regName[2], Lector: regLector[2], Room: regRoom[2], Parity: evenLessonStart}
-
-		var arr = []Subject{oddSubject, evenSubject}
-		for _, subj := range arr {
-			var fromSharp = make([]Subject, 0, 1)
-			if strings.Contains(subj.Name, "#") {
-				fromSharp = subj.parseSharp()
-			} else {
-				fromSharp = append(fromSharp, subj)
-			}
-			for _, v := range fromSharp {
-				if v.Name != "" && v.Name != "__" && v.Name != practice {
-					st.StartTime = v.Parity
-					st.Lesson = v
-					event := st.createEvent()
-					result = append(result, event)
-				}
-			}
+		st.IsAllDay = true
+		for _, v := range fromSharp {
+			st.Lesson = v
+			event := st.createEvent()
+			result = append(result, event)
 		}
+
 		return result, false
 	}
 
-	var fromSharp = make([]Subject, 0, 1)
-	if subject.Name == practice {
-		return result, true
-	}
-	if strings.Contains(subject.Name, "#") {
-		fromSharp = subject.parseSharp()
+	st.IsAllDay = false
+
+	/*
+		regName := reAt.FindStringSubmatch(subject.Name)
+		regLector := reAt.FindStringSubmatch(subject.Lector)
+		regRoom := reAt.FindStringSubmatch(subject.Room)
+	*/
+	names := strings.Split(subject.Name, "@")
+	lectors := strings.Split(subject.Lector, "@")
+	rooms := strings.Split(subject.Room, "@")
+
+	var (
+		oddLessonStart  string
+		evenLessonStart string
+	)
+
+	if isOdd {
+		oddLessonStart = lessonStart
+		evenLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
 	} else {
-		fromSharp = append(fromSharp, subject)
-	}
-	st.IsAllDay = true
-	for _, v := range fromSharp {
-		st.Lesson = v
-		event := st.createEvent()
-		result = append(result, event)
+		oddLessonStart = t.AddDate(0, 0, 7).Format("2006-01-02")
+		evenLessonStart = lessonStart
 	}
 
+	oddSubject := Subject{Name: names[0], Lector: lectors[0], Room: rooms[0], Parity: oddLessonStart}
+	evenSubject := Subject{Name: names[1], Lector: lectors[1], Room: rooms[1], Parity: evenLessonStart}
+
+	var arr = []Subject{oddSubject, evenSubject}
+	for _, subj := range arr {
+		var fromSharp = make([]Subject, 0, 1)
+		if strings.Contains(subj.Name, "#") {
+			fromSharp = subj.parseSharp()
+		} else {
+			fromSharp = append(fromSharp, subj)
+		}
+		for _, v := range fromSharp {
+			if v.Name != "" && v.Name != "__" && v.Name != practice {
+				st.StartTime = v.Parity
+				st.Lesson = v
+				event := st.createEvent()
+				result = append(result, event)
+			}
+		}
+	}
 	return result, false
+
 }
 
 func (st *DataToParsingAt) createEvent() *calendar.Event {
 	subject := st.Lesson
 	i := st.Number
-	allDay := st.IsAllDay
 	lessonStart := st.StartTime
 	endSemester := st.SemesterEnd
 
-	var freq = make([]string, 0, 1)
-	if allDay {
+	freq := make([]string, 0, 1)
+	if st.IsAllDay {
 		freq = []string{"RRULE:FREQ=WEEKLY;UNTIL=" + endSemester}
 	} else {
 		freq = []string{"RRULE:FREQ=WEEKLY;INTERVAL=2;UNTIL=" + endSemester}
 	}
-	color := getColorId(subject.Name, subject.Room)
-	if subject.Lector == "__" {
-		subject.Lector = ""
-	}
-	if subject.Room == "__" {
-		subject.Room = ""
-	}
+
+	/*
+		if subject.Lector == "__" {
+			subject.Lector = ""
+		}
+		if subject.Room == "__" {
+			subject.Room = ""
+		}
+	*/
+
+	subject.Room = getEmpty(subject.Room)
+	subject.Lector = getEmpty(subject.Lector)
+
 	if _, isNorth := north[subject.Room]; isNorth {
 		subject.Room = subject.Room + "(СЕВЕР)"
 	}
 	if _, isSouth := south[subject.Room]; isSouth {
 		subject.Room = subject.Room + "(ЮГ)"
 	}
-	event := &calendar.Event{
+
+	return &calendar.Event{
 		Summary:     subject.Room + " " + subject.Name + " " + subject.Lector,
 		Location:    "Lomonosov Moscow State University", //Number of room and direction?
 		Description: subject.Lector,
@@ -235,7 +272,7 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 			DateTime: lessonStart + timeIntervals[i].End,
 			TimeZone: "Europe/Moscow",
 		},
-		ColorId: color,
+		ColorId: getColorId(subject.Name, subject.Room),
 		Reminders: &calendar.EventReminders{
 			UseDefault: false,
 			Overrides:  []*calendar.EventReminder{},
@@ -245,7 +282,13 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 		},
 		Recurrence: freq,
 	}
-	return event
+}
+
+func getEmpty(in string) string {
+	if in == "__" {
+		return ""
+	}
+	return in
 }
 
 func getColorId(name, room string) string {
@@ -270,12 +313,18 @@ func getColorId(name, room string) string {
 	} else if name == mfk || name == MFKabbr || name == MFK {
 		return "4"
 	}
+
 	_, isLecture := audience[room]
 	if reUpp.MatchString(name) || isLecture {
 		return "3"
 	}
-	if strings.Contains(name, "с/к") || strings.Contains(name, "НИС") || strings.Contains(name, "ДМП") || strings.Contains(name, "Д/п") || strings.Contains(name, "Д/П") || strings.Contains(name, "C/К") || strings.Contains(name, "С/К") || strings.Contains(name, "ФТД") {
+
+	if strings.Contains(name, "с/к") || strings.Contains(name, "НИС") ||
+		strings.Contains(name, "ДМП") || strings.Contains(name, "Д/п") ||
+		strings.Contains(name, "Д/П") || strings.Contains(name, "C/К") ||
+		strings.Contains(name, "С/К") || strings.Contains(name, "ФТД") {
 		return "2"
 	}
+
 	return "7"
 }
