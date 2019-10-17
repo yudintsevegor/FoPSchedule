@@ -3,9 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 
-	"regexp"
 	"strings"
 	"time"
 
@@ -13,11 +13,6 @@ import (
 )
 
 func putData(client *http.Client, group string) error {
-	srv, err := calendar.New(client)
-	if err != nil {
-		return err
-	}
-
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
 		return err
@@ -27,22 +22,19 @@ func putData(client *http.Client, group string) error {
 		return err
 	}
 
-	allWeek, err := dbExplorer(db, group)
-	if err != nil {
-		return err
-	}
-
 	clndr := &calendar.Calendar{
 		Summary: calendarName + group,
+	}
+
+	srv, err := calendar.New(client)
+	if err != nil {
+		return err
 	}
 
 	insertedCalendar, err := srv.Calendars.Insert(clndr).Do()
 	if err != nil {
 		return err
 	}
-
-	//	calendarId := "primary" // Use account calendar
-	calendarId := insertedCalendar.Id
 
 	var (
 		isOdd       bool
@@ -73,14 +65,22 @@ func putData(client *http.Client, group string) error {
 		if  month > 0 && month < 8{
 			month = 2
 			day = 7
-			endSemester = fmt.Sprintf("%v", year) + endSummer
+			endSemester = fmt.Sprintf("%subj", year) + endSummer
 		} else if month > 7 && month < 13 {
 			month = 9
 			day = 1
-			endSemester = fmt.Sprintf("%v", year) + endWinter
+			endSemester = fmt.Sprintf("%subj", year) + endWinter
 		}
 	*/
 
+	//	calendarId := "primary" // Use account calendar
+	calendarId := insertedCalendar.Id
+
+	allWeek, err := dbExplorer(db, group)
+	if err != nil {
+		return err
+	}
+	
 	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 	firstDay := int(t.Weekday()) - 1
 	t = t.AddDate(0, 0, 7-firstDay)
@@ -93,7 +93,7 @@ func putData(client *http.Client, group string) error {
 
 		lessonStart := t.Format("2006-01-02")
 		for i, lesson := range allWeek[j] {
-			st := DataToParsingAt{
+			st := SubjectsInfo{
 				Lesson:      lesson,
 				Number:      i,
 				Parity:      isOdd,
@@ -101,6 +101,7 @@ func putData(client *http.Client, group string) error {
 				Time:        t,
 				SemesterEnd: endSemester,
 			}
+
 			events, isEmpty := st.parseAt()
 			if isEmpty {
 				continue
@@ -111,7 +112,7 @@ func putData(client *http.Client, group string) error {
 				if err != nil {
 					return err
 				}
-				fmt.Printf("Event created: %s\n", event.HtmlLink)
+				log.Printf("Event created: %s\n", event.HtmlLink)
 			}
 		}
 
@@ -121,60 +122,37 @@ func putData(client *http.Client, group string) error {
 	return nil
 }
 
-func (st *Subject) parseSharp() []Subject {
-	count := strings.Count(st.Name, "#")
-	str := strings.Repeat("(.*)#", count) + "(.*)"
-	reSharp := regexp.MustCompile(str)
-
-	names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
-	lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
-	rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]
-
-	var subjects = make([]Subject, 0, 1)
-	for i := 0; i < len(names); i++ {
-		subj := Subject{
-			Name:   names[i],
-			Room:   rooms[i],
-			Lector: lectors[i],
-			Parity: st.Parity,
-		}
-		subjects = append(subjects, subj)
-	}
-	return subjects
-}
-
-func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
-	subject := st.Lesson
+func (st *SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
+	rawSubjects := st.Lesson
 	isOdd := st.Parity
 	lessonStart := st.StartTime
 	t := st.Time
 
-	var result = make([]*calendar.Event, 0, 2)
-	if subject.Name == "" || subject.Name == "__" {
-		return result, true
+	result := make([]*calendar.Event, 0, 2)
+	if rawSubjects.Name == "" || rawSubjects.Name == "__" {
+		return nil, true
 	}
 
-	if strings.Contains(lessonCases, subject.Name) {
-		return result, true
+	if strings.Contains(lessonCases, rawSubjects.Name) {
+		return nil, true
 	}
 
-	if !strings.Contains(subject.Name, "@") {
-		fromSharp := make([]Subject, 0, 1)
-		if subject.Name == practice {
-			return result, true
+	if !strings.Contains(rawSubjects.Name, "@") {
+		if rawSubjects.Name == practice {
+			return nil, true
 		}
 
-		if strings.Contains(subject.Name, "#") {
-			fromSharp = subject.parseSharp()
+		subjects := make([]Subject, 0, 1)
+		if strings.Contains(rawSubjects.Name, "#") {
+			subjects = rawSubjects.parseSharp()
 		} else {
-			fromSharp = append(fromSharp, subject)
+			subjects = append(subjects, rawSubjects)
 		}
 
 		st.IsAllDay = true
-		for _, v := range fromSharp {
-			st.Lesson = v
-			event := st.createEvent()
-			result = append(result, event)
+		for _, subj := range subjects {
+			st.Lesson = subj
+			result = append(result, st.createEvent())
 		}
 
 		return result, false
@@ -183,13 +161,13 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 	st.IsAllDay = false
 
 	/*
-		regName := reAt.FindStringSubmatch(subject.Name)
-		regLector := reAt.FindStringSubmatch(subject.Lector)
-		regRoom := reAt.FindStringSubmatch(subject.Room)
+		regName := reAt.FindStringSubmatch(rawSubjects.Name)
+		regLector := reAt.FindStringSubmatch(rawSubjects.Lector)
+		regRoom := reAt.FindStringSubmatch(rawSubjects.Room)
 	*/
-	names := strings.Split(subject.Name, "@")
-	lectors := strings.Split(subject.Lector, "@")
-	rooms := strings.Split(subject.Room, "@")
+	names := strings.Split(rawSubjects.Name, "@")
+	lectors := strings.Split(rawSubjects.Lector, "@")
+	rooms := strings.Split(rawSubjects.Room, "@")
 
 	var (
 		oddLessonStart  string
@@ -207,29 +185,60 @@ func (st *DataToParsingAt) parseAt() ([]*calendar.Event, bool) {
 	oddSubject := Subject{Name: names[0], Lector: lectors[0], Room: rooms[0], Parity: oddLessonStart}
 	evenSubject := Subject{Name: names[1], Lector: lectors[1], Room: rooms[1], Parity: evenLessonStart}
 
-	var arr = []Subject{oddSubject, evenSubject}
-	for _, subj := range arr {
-		var fromSharp = make([]Subject, 0, 1)
+	oneDay := []Subject{oddSubject, evenSubject}
+	for _, subj := range oneDay {
+		subjects := make([]Subject, 0, 1)
 		if strings.Contains(subj.Name, "#") {
-			fromSharp = subj.parseSharp()
+			subjects = subj.parseSharp()
 		} else {
-			fromSharp = append(fromSharp, subj)
+			subjects = append(subjects, subj)
 		}
-		for _, v := range fromSharp {
-			if v.Name != "" && v.Name != "__" && v.Name != practice {
-				st.StartTime = v.Parity
-				st.Lesson = v
-				event := st.createEvent()
-				result = append(result, event)
+
+		for _, subj := range subjects {
+			if subj.Name != "" && subj.Name != "__" && subj.Name != practice {
+				st.StartTime = subj.Parity
+				st.Lesson = subj
+
+				result = append(result, st.createEvent())
 			}
 		}
 	}
-	return result, false
 
+	return result, false
 }
 
-func (st *DataToParsingAt) createEvent() *calendar.Event {
-	subject := st.Lesson
+func (st *Subject) parseSharp() []Subject {
+	/*
+		count := strings.Count(st.Name, "#")
+		str := strings.Repeat("(.*)#", count) + "(.*)"
+
+		reSharp := regexp.MustCompile(str)
+
+
+		names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
+		lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
+		rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]
+	*/
+
+	names := strings.Split(st.Name, "#")
+	lectors := strings.Split(st.Lector, "#")
+	rooms := strings.Split(st.Room, "#")
+
+	subjects := make([]Subject, 0, len(names))
+	for i := 0; i < len(names); i++ {
+		subjects = append(subjects, Subject{
+			Name:   names[i],
+			Room:   rooms[i],
+			Lector: lectors[i],
+			Parity: st.Parity,
+		})
+	}
+
+	return subjects
+}
+
+func (st *SubjectsInfo) createEvent() *calendar.Event {
+	rawSubjects := st.Lesson
 	i := st.Number
 	lessonStart := st.StartTime
 	endSemester := st.SemesterEnd
@@ -242,28 +251,28 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 	}
 
 	/*
-		if subject.Lector == "__" {
-			subject.Lector = ""
+		if rawSubjects.Lector == "__" {
+			rawSubjects.Lector = ""
 		}
-		if subject.Room == "__" {
-			subject.Room = ""
+		if rawSubjects.Room == "__" {
+			rawSubjects.Room = ""
 		}
 	*/
 
-	subject.Room = getEmpty(subject.Room)
-	subject.Lector = getEmpty(subject.Lector)
+	rawSubjects.Room = getEmpty(rawSubjects.Room)
+	rawSubjects.Lector = getEmpty(rawSubjects.Lector)
 
-	if _, isNorth := north[subject.Room]; isNorth {
-		subject.Room = subject.Room + "(СЕВЕР)"
+	if _, isNorth := north[rawSubjects.Room]; isNorth {
+		rawSubjects.Room = rawSubjects.Room + "(СЕВЕР)"
 	}
-	if _, isSouth := south[subject.Room]; isSouth {
-		subject.Room = subject.Room + "(ЮГ)"
+	if _, isSouth := south[rawSubjects.Room]; isSouth {
+		rawSubjects.Room = rawSubjects.Room + "(ЮГ)"
 	}
 
 	return &calendar.Event{
-		Summary:     subject.Room + " " + subject.Name + " " + subject.Lector,
+		Summary:     rawSubjects.Room + " " + rawSubjects.Name + " " + rawSubjects.Lector,
 		Location:    "Lomonosov Moscow State University", //Number of room and direction?
-		Description: subject.Lector,
+		Description: rawSubjects.Lector,
 		Start: &calendar.EventDateTime{
 			DateTime: lessonStart + timeIntervals[i].Start, // spring ----> season
 			TimeZone: "Europe/Moscow",
@@ -272,7 +281,7 @@ func (st *DataToParsingAt) createEvent() *calendar.Event {
 			DateTime: lessonStart + timeIntervals[i].End,
 			TimeZone: "Europe/Moscow",
 		},
-		ColorId: getColorId(subject.Name, subject.Room),
+		ColorId: getColorId(rawSubjects.Name, rawSubjects.Room),
 		Reminders: &calendar.EventReminders{
 			UseDefault: false,
 			Overrides:  []*calendar.EventReminder{},
@@ -306,13 +315,23 @@ func getColorId(name, room string) string {
 		10 : basil //базилик
 		11 : tomato
 	*/
-	if name == war {
+	switch {
+	case name == war:
 		return "11"
-	} else if name == practice {
+	case name == practice:
 		return "10"
-	} else if name == mfk || name == MFKabbr || name == MFK {
+	case name == mfk || name == MFKabbr || name == MFK:
 		return "4"
 	}
+	/*
+		if name == war {
+			return "11"
+		} else if name == practice {
+			return "10"
+		} else if name == mfk || name == MFKabbr || name == MFK {
+			return "4"
+		}
+	*/
 
 	_, isLecture := audience[room]
 	if reUpp.MatchString(name) || isLecture {

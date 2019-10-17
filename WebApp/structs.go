@@ -39,7 +39,7 @@ type LessonRange struct {
 	End   string
 }
 
-type DataToParsingAt struct {
+type SubjectsInfo struct {
 	Lesson      Subject
 	Number      int
 	Parity      bool
