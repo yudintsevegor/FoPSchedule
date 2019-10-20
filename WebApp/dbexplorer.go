@@ -3,9 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"strings"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 func dbExplorer(db *sql.DB, group string) ([][]Subject, error) {
@@ -15,6 +12,7 @@ func dbExplorer(db *sql.DB, group string) ([][]Subject, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		rawLes := make([]string, 5)
@@ -22,31 +20,8 @@ func dbExplorer(db *sql.DB, group string) ([][]Subject, error) {
 			return nil, err
 		}
 
-		// les := parsePercent(rawLes)
 		allWeek = append(allWeek, parsePercent(rawLes))
 	}
 
 	return allWeek, nil
-}
-
-func parsePercent(arr []string) []Subject {
-	// sbj := Subject{}
-	result := make([]Subject, 0, 5)
-	for _, val := range arr {
-		res := strings.Split(val, "%")
-		/*
-			res := rePerc.FindStringSubmatch(val)
-			sbj.Name = res[1]
-			sbj.Lector = res[2]
-			sbj.Room = res[3]
-		*/
-
-		result = append(result, Subject{
-			Name:   res[0],
-			Lector: res[1],
-			Room:   res[2],
-		})
-	}
-
-	return result
 }

@@ -38,10 +38,8 @@ func (h *Handler) handleMain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	// h.Mutex.Lock()
 	oauthStateString := getRandomString()
 	url := config.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
-	// h.Mutex.Unlock()
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
@@ -89,10 +87,6 @@ func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Mutex.Lock()
-	// st := h.Sessions[cook.Value]
-	// st.Client = client
-	// st.Email = email
-	// h.Sessions[cook.Value] = st
 	h.Sessions[cook.Value] = User{
 		Client: client,
 		Email:  email,
@@ -180,7 +174,8 @@ func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 
 	// bottle neck, TODO: change
 	h.Mutex.Lock()
-	client := h.Sessions[c.Value].Client
+	user := h.Sessions[c.Value]
+	client := user.Client
 	h.Mutex.Unlock()
 
 	group := r.FormValue("group")
@@ -192,14 +187,14 @@ func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		if err := putData(client, group); err != nil {
+		if err := user.putData(h.DB, client, group); err != nil {
 			log.Println(err)
 			errorHandler(w, http.StatusInternalServerError, err)
 			return
 		}
 	}()
 
-	// http.Redirect(w, r, urlCalendar, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, host, http.StatusTemporaryRedirect)
 }
 
 func errorHandler(w http.ResponseWriter, statusCode int, err error) {

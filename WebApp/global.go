@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	maxConnections = 100
+
 	cookieURL  = "/cookie"
 	cookieName = "fopschedule"
 
@@ -13,6 +15,7 @@ const (
 
 	calendarName = "Shedule"
 	urlCalendar  = "https://calendar.google.com"
+	timeLayout   = "2006-01-02"
 
 	columns = " ( first, second, third, fourth, fifth ) "
 	quesStr = " ( ?, ?, ?, ?, ? ) "
@@ -36,23 +39,8 @@ const (
 )
 
 var (
-	// TODO: change to strings.Split()
+	// to set another color for event if event is for all groups
 	reUpp = regexp.MustCompile("([А-Я]){5,}")
-	// rePerc = regexp.MustCompile("(.*)%(.*)%(.*)")
-	// reAt   = regexp.MustCompile("(.*)@(.*)")
-	reNum  = regexp.MustCompile(`([0-9]+М*Б*)`)
-	reDash = regexp.MustCompile(`(\s\-\s)`)
-
-	/*
-		testCourse = map[string]string{
-			"1": "Первый",
-			"2": "Второй",
-			"3": "Третий",
-			"4": "Четвертый",
-			"5": "Пятый",
-			"6": "Шестой",
-		}
-	*/
 
 	subGroups = map[string][]string{
 		"341":  []string{"341а", "341б"},

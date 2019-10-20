@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 )
@@ -29,10 +31,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	db, err := sql.Open("mysql", DSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.SetMaxIdleConns(maxConnections)
+
+	if err = db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+
 	sessions := make(map[string]User)
 	handle := &Handler{
 		Sessions: sessions,
 		Mutex:    &sync.Mutex{},
+		DB:       db,
 	}
 
 	fmt.Println("starting server at :" + port)

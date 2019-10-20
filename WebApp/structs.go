@@ -1,52 +1,27 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
-	"regexp"
 	"sync"
 	"time"
 )
 
 type Subject struct {
-	Name   string
-	Lector string
-	Room   string
-	Parity string
-}
-
-type Department struct {
-	Number  string
-	Lessons []Subject
-}
-
-type DataToParsingLine struct {
-	Departments []Department
-	AllGroups   []string
-
-	ResultFromReqexp []string
-	InsertedGroups   []string
-	Lesson           Subject
-	RegexpInterval   *regexp.Regexp
-}
-
-type Interval struct {
-	Start int
-	End   int
-}
-
-type LessonRange struct {
-	Start string
-	End   string
+	Name          string
+	Lector        string
+	Room          string
+	LessonStartAt string
 }
 
 type SubjectsInfo struct {
-	Lesson      Subject
-	Number      int
-	Parity      bool
-	IsAllDay    bool
-	StartTime   string
-	Time        time.Time
-	SemesterEnd string
+	Subject       Subject
+	Number        int
+	IsOdd         bool
+	IsAllDay      bool
+	LessonStartAt string
+	TimeNow       time.Time
+	SemesterEnd   string
 }
 
 type Template struct {
@@ -67,8 +42,14 @@ type UserInfo struct {
 type Handler struct {
 	Sessions map[string]User
 	Mutex    *sync.Mutex
+	DB       *sql.DB
 }
 
 type ServerError struct {
 	Error string
+}
+
+type LessonRange struct {
+	Start string
+	End   string
 }
