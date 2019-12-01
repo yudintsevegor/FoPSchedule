@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"fopSchedule/master/common"
 	"log"
 	"regexp"
 	"strconv"
@@ -69,9 +70,15 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 					continue
 				}
 
-				regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
-				regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
-				regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+				regName := strings.Split(dep.Lessons[subjectIndex].Name, "@")[1]
+				regLector := strings.Split(dep.Lessons[subjectIndex].Lector, "@")[1]
+				regRoom := strings.Split(dep.Lessons[subjectIndex].Room, "@")[1]
+
+				/*
+					regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
+					regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
+					regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+				*/
 
 				if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
 					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
@@ -98,8 +105,8 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 	}
 
 	for _, gr := range resFromReg {
-		if _, ok := subGroups[gr]; ok {
-			resFromReg = append(resFromReg, subGroups[gr]...)
+		if _, ok := common.SubGroups[gr]; ok {
+			resFromReg = append(resFromReg, common.SubGroups[gr]...)
 		}
 	}
 
@@ -144,9 +151,15 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				continue
 			}
 
-			regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
-			regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
-			regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+			regName := strings.Split(dep.Lessons[subjectIndex].Name, "@")[1]
+			regLector := strings.Split(dep.Lessons[subjectIndex].Lector, "@")[1]
+			regRoom := strings.Split(dep.Lessons[subjectIndex].Room, "@")[1]
+
+			/*
+				regName := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Name)[2]
+				regLector := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Lector)[2]
+				regRoom := reAt.FindStringSubmatch(dep.Lessons[subjectIndex].Room)[2]
+			*/
 
 			if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
 				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
@@ -204,7 +217,7 @@ func putToDB(departments []Department, db *sql.DB) {
 			valuesToDB = append(valuesToDB, value)
 		}
 		//		fmt.Println(valuesToDB)
-		req := fmt.Sprintf("INSERT INTO `%v`"+columns+"VALUES"+quesStr, val.Number)
+		req := fmt.Sprintf("INSERT INTO `%v`"+common.Columns+"VALUES"+common.QuesStr, val.Number)
 		statement, err := db.Prepare(req)
 		if err != nil {
 			log.Fatal(err)
@@ -231,7 +244,7 @@ func clean(arr []Department) []Department {
 }
 
 func fromStringToInt(class string) int {
-	num := reNum.FindStringSubmatch(class)[1]
+	num := common.ReNum.FindStringSubmatch(class)[1]
 	numberFromClass, err := strconv.Atoi(num)
 	if err != nil {
 		log.Fatal(err)
@@ -261,94 +274,36 @@ func parseGroups(text, room string) Subject {
 		subj.Name = "__"
 		subj.Room = "__"
 		subj.Lector = "__"
+
 		return subj
 	}
 
-	if strings.Contains(text, practice) {
-		subj.Name = practice
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
+	for lesson, _ := range common.LessonMap {
+		if strings.Contains(text, lesson) {
+			subj.Name = lesson
+			subj.Room = "__"
+			subj.Lector = "__"
+
+			return subj
+		}
 	}
-	if strings.Contains(text, mfk) {
-		subj.Name = mfk
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, MFK) {
-		subj.Name = MFK
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, MFKabbr) {
-		subj.Name = MFKabbr
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, war) {
-		subj.Name = war
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, WAR) {
-		subj.Name = WAR
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, prac201) {
+
+	// TODO: Egor, FIX IT
+	// ex.: 429 - С/К по выбору доц. Водовозов В. Ю.
+	if len(room) == 0 {
 		subj.Name = text
 		subj.Room = "__"
 		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, prac) {
-		subj.Name = prac
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, specprac) {
-		subj.Name = text
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, phys) {
-		subj.Name = phys
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, research) {
-		subj.Name = research
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, astroProblems) {
-		subj.Name = astroProblems
-		subj.Room = "__"
-		subj.Lector = "__"
-		return subj
-	}
-	if strings.Contains(text, NIS) {
-		subj.Name = NIS
-		subj.Room = "__"
-		subj.Lector = "__"
+
 		return subj
 	}
 
-	fmt.Println(text)
+	fmt.Printf("ROOM: %s, TEXT: %s\n", room, text)
 	rLect := regexp.MustCompile(`.* ` + room + ` (.*)`)
 	Lect := rLect.FindStringSubmatch(text)[1]
 
 	var rSubj *regexp.Regexp
-	if reDash.MatchString(text) {
+	if common.ReDash.MatchString(text) {
 		rSubj = regexp.MustCompile(`([^0-9\-]+) ` + room + " " + Lect)
 	} else {
 		rSubj = regexp.MustCompile(`([^0-9]+) ` + room + " " + Lect)

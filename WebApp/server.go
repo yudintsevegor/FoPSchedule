@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"time"
 
+	"fopSchedule/master/common"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -20,7 +22,7 @@ var config *oauth2.Config
 
 func init() {
 	config = &oauth2.Config{
-		RedirectURL:  host + cookieURL,
+		RedirectURL:  host + common.CookieURL,
 		ClientID:     googleClientID,
 		ClientSecret: googleClientSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/userinfo.email"},
@@ -29,12 +31,12 @@ func init() {
 }
 
 func (h *Handler) handleMain(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseGlob(mainHTMLPage)
+	tmpl, err := template.ParseGlob(common.MainHTMLPage)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
-	tmpl.ExecuteTemplate(w, mainHTMLPage, nil)
+	tmpl.ExecuteTemplate(w, common.MainHTMLPage, nil)
 }
 
 func (h *Handler) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +47,7 @@ func (h *Handler) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleCookie(w http.ResponseWriter, r *http.Request) {
+	cookieName := common.CookieName
 	_, err := r.Cookie(cookieName)
 	if err == nil {
 		for _, c := range r.Cookies() {
@@ -128,7 +131,7 @@ func getClientAndInfo(code string) (*http.Client, string, error) {
 }
 
 func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie(cookieName)
+	c, err := r.Cookie(common.CookieName)
 	if err != nil {
 		log.Println("Error in '/callback': ", err)
 		errorHandler(w, http.StatusUnauthorized, err)
@@ -143,6 +146,7 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	indexHTMLPage := common.IndexHTMLPage
 	tmpl, err := template.ParseGlob(indexHTMLPage)
 	if err != nil {
 		log.Println(err)
@@ -157,7 +161,7 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleResult(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie(cookieName)
+	c, err := r.Cookie(common.CookieName)
 	if err != nil {
 		log.Println(err)
 		errorHandler(w, http.StatusUnauthorized, err)

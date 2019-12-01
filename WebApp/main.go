@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"sync"
+
+	"fopSchedule/master/common"
 )
 
 const (
@@ -23,7 +25,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleGoogleCallback(w, r)
 	case "/result":
 		h.handleResult(w, r)
-	case cookieURL:
+	case common.CookieURL:
 		h.handleCookie(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -35,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.SetMaxIdleConns(maxConnections)
+	db.SetMaxIdleConns(common.MaxConnections)
 
 	if err = db.Ping(); err != nil {
 		log.Fatal(err)

@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 
+	"fopSchedule/master/common"
+
 	"google.golang.org/api/calendar/v3"
 )
 
@@ -31,13 +33,13 @@ func (sInfo SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
 		return nil, true
 	}
 
-	if strings.Contains(lessonCases, rawSubjects.Name) {
+	if strings.Contains(common.LessonCases, rawSubjects.Name) {
 		return nil, true
 	}
 
 	result := make([]*calendar.Event, 0, 1)
 	if !strings.Contains(rawSubjects.Name, "@") {
-		if rawSubjects.Name == practice {
+		if rawSubjects.Name == common.Practice {
 			return nil, true
 		}
 
@@ -63,14 +65,14 @@ func (sInfo SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
 	)
 
 	tNow := sInfo.TimeNow
-	lessonStart := tNow.Format(timeLayout)
+	lessonStart := tNow.Format(common.TimeLayout)
 
 	if !sInfo.IsOdd {
-		oddLessonStart = tNow.AddDate(0, 0, 7).Format(timeLayout)
+		oddLessonStart = tNow.AddDate(0, 0, 7).Format(common.TimeLayout)
 		evenLessonStart = lessonStart
 	} else {
 		oddLessonStart = lessonStart
-		evenLessonStart = tNow.AddDate(0, 0, 7).Format(timeLayout)
+		evenLessonStart = tNow.AddDate(0, 0, 7).Format(common.TimeLayout)
 	}
 
 	oddSubject := Subject{
@@ -91,7 +93,7 @@ func (sInfo SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
 	for _, subj := range oneDay {
 		subjects := getSubjects(subj)
 		for _, subj := range subjects {
-			if subj.Name != "" && subj.Name != "__" && subj.Name != practice {
+			if subj.Name != "" && subj.Name != "__" && subj.Name != common.Practice {
 				sInfo.LessonStartAt = subj.LessonStartAt
 				sInfo.Subject = subj
 

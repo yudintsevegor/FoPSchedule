@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"fopSchedule/master/common"
+	
 	"google.golang.org/api/calendar/v3"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -21,7 +23,7 @@ const (
 
 func (u *User) putData(db *sql.DB, client *http.Client, group string) error {
 	clndr := &calendar.Calendar{
-		Summary: calendarName + group,
+		Summary: common.CalendarName + group,
 	}
 
 	srvc, err := calendar.New(client)
@@ -133,10 +135,10 @@ func (sInfo *SubjectsInfo) createEvent() *calendar.Event {
 	lesson.Room = getEmpty(lesson.Room)
 	lesson.Lector = getEmpty(lesson.Lector)
 
-	if _, isNorth := north[lesson.Room]; isNorth {
+	if _, isNorth := common.North[lesson.Room]; isNorth {
 		lesson.Room = lesson.Room + "(СЕВЕР)"
 	}
-	if _, isSouth := south[lesson.Room]; isSouth {
+	if _, isSouth := common.South[lesson.Room]; isSouth {
 		lesson.Room = lesson.Room + "(ЮГ)"
 	}
 
@@ -148,11 +150,11 @@ func (sInfo *SubjectsInfo) createEvent() *calendar.Event {
 		Location:    "Lomonosov Moscow State University",
 		Description: lesson.Lector,
 		Start: &calendar.EventDateTime{
-			DateTime: lessonStart + timeIntervals[i].Start, // TODO: spring ----> season
+			DateTime: lessonStart + common.TimeIntervals[i].Start, // TODO: spring ----> season
 			TimeZone: "Europe/Moscow",
 		},
 		End: &calendar.EventDateTime{
-			DateTime: lessonStart + timeIntervals[i].End,
+			DateTime: lessonStart + common.TimeIntervals[i].End,
 			TimeZone: "Europe/Moscow",
 		},
 		ColorId: getColorId(lesson.Name, lesson.Room),
@@ -190,16 +192,16 @@ func getColorId(name, room string) string {
 		11 : tomato
 	*/
 	switch {
-	case name == war:
+	case name == common.War:
 		return "11"
-	case name == practice:
+	case name == common.Practice:
 		return "10"
-	case name == mfk || name == MFKabbr || name == MFK:
+	case name == common.Mfk || name == common.MFKabbr || name == common.MFKCaps:
 		return "4"
 	}
 
-	_, isLecture := audience[room]
-	if reUpp.MatchString(name) || isLecture {
+	_, isLecture := common.Audience[room]
+	if common.ReUpp.MatchString(name) || isLecture {
 		return "3"
 	}
 

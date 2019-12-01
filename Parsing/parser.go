@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"fopSchedule/master/common"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
-	//	"strconv"
+
 	"html/template"
 	"strings"
 
@@ -29,8 +30,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = db.Ping()
-	if err != nil {
+
+	if err = db.Ping(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -44,6 +45,7 @@ func main() {
 			if res.StatusCode != 200 {
 				log.Fatal("status code error: %d %s", res.StatusCode, res.Status)
 			}
+
 			doc, err := goquery.NewDocumentFromReader(res.Body)
 			if err != nil {
 				log.Fatal(err)
@@ -57,8 +59,7 @@ func main() {
 	rowsTb, err := db.Query("SHOW TABLES")
 	defer rowsTb.Close()
 	for rowsTb.Next() {
-		err = rowsTb.Scan(&tableName)
-		if err != nil {
+		if err = rowsTb.Scan(&tableName); err != nil {
 			log.Fatal(err)
 		}
 		if strings.Contains(tableName, "М") || strings.Contains(tableName, "м") {
@@ -66,16 +67,18 @@ func main() {
 			tablesNames[i+3] = append(tablesNames[i+3], tableName)
 			continue
 		}
+
 		i := getCourse(tableName)
 		tablesNames[i-1] = append(tablesNames[i-1], tableName)
 	}
-	out, err := os.Create(html)
+
+	out, err := os.Create(common.HtmlPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Fprintf(out, head)
-	tmpl := template.Must(template.ParseFiles("newInd.html"))
+	tmpl := template.Must(template.ParseFiles(common.HtmlGen))
 	tmpl.Execute(out, struct {
 		Groups [][]string
 	}{
@@ -87,18 +90,23 @@ func getCourse(tableName string) int {
 	if strings.HasPrefix(tableName, "1") {
 		return 1
 	}
+
 	if strings.HasPrefix(tableName, "2") {
 		return 2
 	}
+
 	if strings.HasPrefix(tableName, "3") {
 		return 3
 	}
+
 	if strings.HasPrefix(tableName, "4") {
 		return 4
 	}
+
 	if strings.HasPrefix(tableName, "5") {
 		return 5
 	}
+
 	return 6
 }
 
@@ -132,7 +140,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 			tmpSlice := reGrp.FindAllString(text, -1)
 			resFromReg := make([]string, 0, len(tmpSlice))
 			for _, gr := range tmpSlice {
-				if subgr, ok := subGroups[gr]; ok {
+				if subgr, ok := common.SubGroups[gr]; ok {
 					resFromReg = append(resFromReg, subgr...)
 					continue
 				}

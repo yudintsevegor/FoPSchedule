@@ -48,8 +48,3 @@ type Handler struct {
 type ServerError struct {
 	Error string
 }
-
-type LessonRange struct {
-	Start string
-	End   string
-}
