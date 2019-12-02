@@ -142,8 +142,3 @@ var (
 		4: {Start: "T17:05:00" + moscowTime, End: "T18:40:00" + moscowTime},
 	}
 )
-
-type LessonRange struct {
-	Start string
-	End   string
-}

@@ -4,13 +4,15 @@ import (
 	"database/sql"
 	"fmt"
 	"fopSchedule/master/common"
+	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
-
-	"html/template"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/PuerkitoBio/goquery"
 	_ "github.com/go-sql-driver/mysql"
@@ -26,6 +28,7 @@ func main() {
 		"5": []string{"1", "2"},
 		"6": []string{"1", "2"},
 	}
+
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
 		log.Fatal(err)
@@ -35,40 +38,50 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for course, arr := range courses {
-		for _, thread := range arr {
+	for course, threads := range courses {
+		for _, thread := range threads {
 			res, err := http.Get("http://ras.phys.msu.ru/table/" + course + "/" + thread + ".html")
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer res.Body.Close()
-			if res.StatusCode != 200 {
-				log.Fatal("status code error: %d %s", res.StatusCode, res.Status)
+
+			if res.StatusCode != http.StatusOK {
+				log.Fatal("status code error: %v %v", res.StatusCode, res.Status)
 			}
 
-			doc, err := goquery.NewDocumentFromReader(res.Body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			parse(course, db, doc)
+			parse(course, db, res.Body)
 		}
 	}
+
 	var tablesNames = make([][]string, 6)
 	var tableName string
 
 	rowsTb, err := db.Query("SHOW TABLES")
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer rowsTb.Close()
+
 	for rowsTb.Next() {
 		if err = rowsTb.Scan(&tableName); err != nil {
 			log.Fatal(err)
 		}
+
 		if strings.Contains(tableName, "М") || strings.Contains(tableName, "м") {
-			i := getCourse(tableName)
+			i, err := getCourse(tableName)
+			if err != nil {
+				log.Fatal(err)
+			}
 			tablesNames[i+3] = append(tablesNames[i+3], tableName)
 			continue
 		}
 
-		i := getCourse(tableName)
+		i, err := getCourse(tableName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		tablesNames[i-1] = append(tablesNames[i-1], tableName)
 	}
 
@@ -86,34 +99,35 @@ func main() {
 	})
 }
 
-func getCourse(tableName string) int {
-	if strings.HasPrefix(tableName, "1") {
-		return 1
+func getCourse(tableName string) (int, error) {
+	switch {
+	case strings.HasPrefix(tableName, "1"):
+		return 1, nil
+	case strings.HasPrefix(tableName, "2"):
+		return 2, nil
+	case strings.HasPrefix(tableName, "3"):
+		return 3, nil
+	case strings.HasPrefix(tableName, "4"):
+		return 4, nil
+	case strings.HasPrefix(tableName, "5"):
+		return 5, nil
+	case strings.HasPrefix(tableName, "6"):
+		return 6, nil
 	}
 
-	if strings.HasPrefix(tableName, "2") {
-		return 2
-	}
-
-	if strings.HasPrefix(tableName, "3") {
-		return 3
-	}
-
-	if strings.HasPrefix(tableName, "4") {
-		return 4
-	}
-
-	if strings.HasPrefix(tableName, "5") {
-		return 5
-	}
-
-	return 6
+	return 0, errors.Errorf("unknown table name: %v", tableName)
 }
 
-func parse(course string, db *sql.DB, doc *goquery.Document) {
+func parse(course string, db *sql.DB, r io.Reader) {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if course == "5" {
 		course = "[1,5]"
 	}
+
 	if course == "6" {
 		course = "[2,6]"
 	}
@@ -124,7 +138,6 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 	grpBegin := "ГРУППЫ >>"
 	grpEnd := "<< ГРУППЫ"
 
-	var err error
 	var grpsFound int
 	var isGroups bool
 	var departments = make([]Department, 0, 5)
@@ -135,6 +148,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 		if grpsFound > 1 {
 			return
 		}
+
 		text := std.Text()
 		if isGroups && text != grpEnd {
 			tmpSlice := reGrp.FindAllString(text, -1)
@@ -144,16 +158,19 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 					resFromReg = append(resFromReg, subgr...)
 					continue
 				}
+
 				resFromReg = append(resFromReg, gr)
 			}
+
 			eachColumn[columnIndex] = resFromReg
 			columnIndex++
 			for _, val := range resFromReg {
-				depart := Department{Lessons: make([]Subject, 5, 5)}
+				depart := Department{Lessons: make([]common.Subject, 5, 5)}
 				depart.Number = val
 				departments = append(departments, depart)
 			}
 		}
+
 		if text == grpBegin {
 			grpsFound++
 			isGroups = true
@@ -165,6 +182,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 	for key, val := range eachColumn {
 		fmt.Println(key, val)
 	}
+
 	partOfReq := `(
 				  id int(11) NOT NULL AUTO_INCREMENT,
 				  first text(255),
@@ -178,10 +196,10 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 	for _, val := range eachColumn {
 		for _, gr := range val {
 			del := fmt.Sprintf("DROP TABLE IF EXISTS `%v`; ", gr)
-			_, err = db.Exec(del)
-			if err != nil {
+			if _, err = db.Exec(del); err != nil {
 				log.Fatal(err)
 			}
+
 			request := fmt.Sprintf("CREATE TABLE `%v` "+partOfReq, gr)
 			_, err = db.Exec(request)
 			if err != nil {
@@ -189,6 +207,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 			}
 		}
 	}
+
 	fmt.Println("TABLES CREATED")
 
 	var time string
@@ -276,7 +295,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 			}
 		}
 
-		//To count all small0 classes
+		// To count all small0 classes
 		std.Find("td").Each(func(i int, sel *goquery.Selection) {
 			if small, ok := sel.Attr("class"); ok {
 				if strings.Contains(small, "tdsmall0") {
@@ -351,7 +370,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 			numberFromClass := fromStringToInt(class)
 			subject := parseGroups(text, room)
 
-			//			resFromReg := reGrp.FindAllString(text, -1)
+			// resFromReg := reGrp.FindAllString(text, -1)
 
 			if numberBeforeSmall0 == 0 {
 				numberBeforeSmall0 = numberFromClass
@@ -370,7 +389,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 				for i := ind; i < ind+numberBeforeSmall0; i++ {
 					allGr = append(allGr, eachColumn[i]...)
 				}
-			} else { //NEXT STRING
+			} else { // NEXT STRING
 				is2Weeks = false
 				var End int
 				if numberBeforeSmall0 < Spans[spanIndex].End-Spans[spanIndex].Start {
@@ -433,6 +452,7 @@ func parse(course string, db *sql.DB, doc *goquery.Document) {
 			}
 			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
 			isFirstInSmall0 = false
+
 			//very strange part...
 			if countSmall0 > 0 {
 				countSmall0--

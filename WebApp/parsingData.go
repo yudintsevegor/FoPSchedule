@@ -13,11 +13,11 @@ import (
 // # - lessons in the same time, ex.: English lesson, in which teacher devides groups on 2 subgroups
 // % - Name%Lector%Room
 
-func parsePercent(arr []string) []Subject {
-	result := make([]Subject, 0, 5)
+func parsePercent(arr []string) []common.Subject {
+	result := make([]common.Subject, 0, 5)
 	for _, val := range arr {
 		res := strings.Split(val, "%")
-		result = append(result, Subject{
+		result = append(result, common.Subject{
 			Name:   res[0],
 			Lector: res[1],
 			Room:   res[2],
@@ -39,7 +39,7 @@ func (sInfo SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
 
 	result := make([]*calendar.Event, 0, 1)
 	if !strings.Contains(rawSubjects.Name, "@") {
-		if rawSubjects.Name == common.Practice {
+		if rawSubjects.Name == common.DiplomaPractice {
 			return nil, true
 		}
 
@@ -75,25 +75,25 @@ func (sInfo SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
 		evenLessonStart = tNow.AddDate(0, 0, 7).Format(common.TimeLayout)
 	}
 
-	oddSubject := Subject{
+	oddSubject := common.Subject{
 		Name:          names[0],
 		Lector:        lectors[0],
 		Room:          rooms[0],
 		LessonStartAt: oddLessonStart,
 	}
 
-	evenSubject := Subject{
+	evenSubject := common.Subject{
 		Name:          names[1],
 		Lector:        lectors[1],
 		Room:          rooms[1],
 		LessonStartAt: evenLessonStart,
 	}
 
-	oneDay := []Subject{oddSubject, evenSubject}
+	oneDay := []common.Subject{oddSubject, evenSubject}
 	for _, subj := range oneDay {
 		subjects := getSubjects(subj)
 		for _, subj := range subjects {
-			if subj.Name != "" && subj.Name != "__" && subj.Name != common.Practice {
+			if subj.Name != "" && subj.Name != "__" && subj.Name != common.DiplomaPractice {
 				sInfo.LessonStartAt = subj.LessonStartAt
 				sInfo.Subject = subj
 
@@ -103,22 +103,4 @@ func (sInfo SubjectsInfo) parseAt() ([]*calendar.Event, bool) {
 	}
 
 	return result, false
-}
-
-func (subj *Subject) parseSharp() []Subject {
-	names := strings.Split(subj.Name, "#")
-	lectors := strings.Split(subj.Lector, "#")
-	rooms := strings.Split(subj.Room, "#")
-
-	subjects := make([]Subject, 0, len(names))
-	for i := 0; i < len(names); i++ {
-		subjects = append(subjects, Subject{
-			Name:          names[i],
-			Room:          rooms[i],
-			Lector:        lectors[i],
-			LessonStartAt: subj.LessonStartAt,
-		})
-	}
-
-	return subjects
 }

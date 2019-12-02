@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"fopSchedule/master/common"
-	
+
 	"google.golang.org/api/calendar/v3"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -114,11 +114,11 @@ func (u *User) putData(db *sql.DB, client *http.Client, group string) error {
 	return nil
 }
 
-func getSubjects(subj Subject) []Subject {
+func getSubjects(subj common.Subject) []common.Subject {
 	if strings.Contains(subj.Name, "#") {
-		return subj.parseSharp()
+		return subj.common.ParseSharp()
 	} else {
-		return []Subject{subj}
+		return []common.Subject{subj}
 	}
 }
 
@@ -194,7 +194,7 @@ func getColorId(name, room string) string {
 	switch {
 	case name == common.War:
 		return "11"
-	case name == common.Practice:
+	case name == common.DiplomaPractice:
 		return "10"
 	case name == common.Mfk || name == common.MFKabbr || name == common.MFKCaps:
 		return "4"

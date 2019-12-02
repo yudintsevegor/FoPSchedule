@@ -2,20 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"fopSchedule/master/common"
 	"net/http"
 	"sync"
 	"time"
 )
 
-type Subject struct {
-	Name          string
-	Lector        string
-	Room          string
-	LessonStartAt string
-}
-
 type SubjectsInfo struct {
-	Subject       Subject
+	Subject       common.Subject
 	Number        int
 	IsOdd         bool
 	IsAllDay      bool

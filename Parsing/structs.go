@@ -1,20 +1,14 @@
 package main
 
 import (
+	"fopSchedule/master/common"
 	"regexp"
 	"time"
 )
 
-type Subject struct {
-	Name   string
-	Lector string
-	Room   string
-	Parity string
-}
-
 type Department struct {
 	Number  string
-	Lessons []Subject
+	Lessons []common.Subject
 }
 
 type DataToParsingLine struct {
@@ -22,7 +16,7 @@ type DataToParsingLine struct {
 	AllGroups        []string
 	ResultFromReqexp []string
 	InsertedGroups   []string
-	Lesson           Subject
+	Lesson           common.Subject
 	RegexpInterval   *regexp.Regexp
 }
 
@@ -37,7 +31,7 @@ type LessonRange struct {
 }
 
 type DataToParsingAt struct {
-	Lesson      Subject
+	Lesson      common.Subject
 	Number      int
 	Parity      bool
 	IsAllDay    bool

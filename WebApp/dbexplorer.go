@@ -3,10 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"fopSchedule/master/common"
 )
 
-func dbExplorer(db *sql.DB, group string) ([][]Subject, error) {
-	allWeek := make([][]Subject, 0, 6)
+func dbExplorer(db *sql.DB, group string) ([][]common.Subject, error) {
+	allWeek := make([][]common.Subject, 0, 6)
 	req := fmt.Sprintf("SELECT first, second, third, fourth, fifth FROM `%v`", group)
 	rows, err := db.Query(req)
 	if err != nil {

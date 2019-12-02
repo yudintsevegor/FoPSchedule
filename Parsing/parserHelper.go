@@ -11,29 +11,9 @@ import (
 	"unicode"
 )
 
-func (st *Subject) parseSharp() []Subject {
-	count := strings.Count(st.Name, "#")
-	str := strings.Repeat("(.*)#", count) + "(.*)"
-	reSharp := regexp.MustCompile(str)
-
-	names := reSharp.FindStringSubmatch(st.Name)[1 : count+2]
-	lectors := reSharp.FindStringSubmatch(st.Lector)[1 : count+2]
-	rooms := reSharp.FindStringSubmatch(st.Room)[1 : count+2]
-
-	var subjects = make([]Subject, 0, 1)
-	for i := 0; i < len(names); i++ {
-		subj := Subject{
-			Name:   names[i],
-			Room:   rooms[i],
-			Lector: lectors[i],
-			Parity: st.Parity,
-		}
-		subjects = append(subjects, subj)
-	}
-	return subjects
-}
-
-func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text string, nextLine, is2Weeks, isFirstInSmall0 bool) ([]Department, []string) {
+func (st *DataToParsingLine) parseLine(
+	subjectIndex, countSmall0 int, text string, nextLine, is2Weeks, isFirstInSmall0 bool,
+) ([]Department, []string) {
 	departments := st.Departments
 	allGr := st.AllGroups
 	resFromReg := st.ResultFromReqexp
@@ -47,17 +27,20 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				if dep.Number != gr {
 					continue
 				}
+
 				if !nextLine {
 					if countSmall0 < 0 {
 						dep.Lessons[subjectIndex] = subject
 						continue
 					}
-					newSubj := Subject{}
+
+					newSubj := common.Subject{}
 					if isFirstInSmall0 {
 						newSubj = subject
 					} else {
 						newSubj = subject.getNewStruct(dep.Lessons[subjectIndex], "#")
 					}
+
 					dep.Lessons[subjectIndex] = newSubj
 					continue
 				}
@@ -91,6 +74,7 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 				//				dep.Lessons[subjectIndex] = newSubj
 			}
 		}
+
 		return departments, insertedGroups
 	}
 
@@ -121,9 +105,9 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 					insertedGroups = append(insertedGroups, gr)
 					continue
 				}
-				var subjs = make([]Subject, 0, 1)
+				var subjs = make([]common.Subject, 0, 1)
 				if strings.Contains(dep.Lessons[subjectIndex].Name, "#") {
-					subjs = dep.Lessons[subjectIndex].parseSharp()
+					subjs = dep.Lessons[subjectIndex].common.ParseSharp()
 				} else {
 					subjs = append(subjs, dep.Lessons[subjectIndex])
 				}
@@ -191,17 +175,21 @@ func (st *DataToParsingLine) parseLine(subjectIndex, countSmall0 int, text strin
 			if dep.Number != gr {
 				continue
 			}
-			newSubj := Subject{
+
+			newSubj := common.Subject{
 				Name:   "__",
 				Lector: "__",
 				Room:   "__",
 			}
+
 			if nextLine {
 				newSubj = newSubj.getNewStruct(dep.Lessons[subjectIndex], "@")
 			}
+
 			dep.Lessons[subjectIndex] = newSubj
 		}
 	}
+
 	if countSmall0 <= 0 {
 		insertedGroups = make([]string, 5)
 	}
@@ -236,7 +224,7 @@ func clean(arr []Department) []Department {
 	for i, d := range arr {
 		s := Department{}
 		s.Number = d.Number
-		s.Lessons = make([]Subject, len(d.Lessons))
+		s.Lessons = make([]common.Subject, len(d.Lessons))
 		result[i] = s
 	}
 
@@ -253,16 +241,16 @@ func fromStringToInt(class string) int {
 	return numberFromClass
 }
 
-func (st *Subject) getNewStruct(subject Subject, delimiter string) Subject {
-	return Subject{
+func (st *common.Subject) getNewStruct(subject common.Subject, delimiter string) common.Subject {
+	return common.Subject{
 		Name:   subject.Name + delimiter + st.Name,
 		Lector: subject.Lector + delimiter + st.Lector,
 		Room:   subject.Room + delimiter + st.Room,
 	}
 }
 
-func parseGroups(text, room string) Subject {
-	subj := Subject{}
+func parseGroups(text, room string) common.Subject {
+	subj := common.Subject{}
 
 	var isSpace bool
 	for _, val := range text {
