@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"fopSchedule/master/common"
+	"fopSchedule/common"
 	"log"
 	"regexp"
 	"strconv"
@@ -13,7 +13,7 @@ import (
 
 func (st *DataToParsingLine) parseLine(
 	subjectIndex, countSmall0 int, text string, nextLine, is2Weeks, isFirstInSmall0 bool,
-) ([]Department, []string) {
+) ([]Department, []string, error) {
 	departments := st.Departments
 	allGr := st.AllGroups
 	resFromReg := st.ResultFromReqexp
@@ -38,7 +38,7 @@ func (st *DataToParsingLine) parseLine(
 					if isFirstInSmall0 {
 						newSubj = subject
 					} else {
-						newSubj = subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+						newSubj = subject.GetNewStruct(dep.Lessons[subjectIndex], "#")
 					}
 
 					dep.Lessons[subjectIndex] = newSubj
@@ -47,7 +47,7 @@ func (st *DataToParsingLine) parseLine(
 
 				// new part
 				if !strings.Contains(dep.Lessons[subjectIndex].Name, "@") {
-					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
+					newSubj := subject.GetNewStruct(dep.Lessons[subjectIndex], "@")
 					dep.Lessons[subjectIndex] = newSubj
 					insertedGroups = append(insertedGroups, gr)
 					continue
@@ -64,24 +64,31 @@ func (st *DataToParsingLine) parseLine(
 				*/
 
 				if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
-					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+					newSubj := subject.GetNewStruct(dep.Lessons[subjectIndex], "#")
 					dep.Lessons[subjectIndex] = newSubj
 				}
 				insertedGroups = append(insertedGroups, gr)
-				//end of new part
+				// end of new part
 
-				//				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
-				//				dep.Lessons[subjectIndex] = newSubj
+				// newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
+				// dep.Lessons[subjectIndex] = newSubj
 			}
 		}
 
-		return departments, insertedGroups
+		return departments, insertedGroups, nil
 	}
 
 	if reInterval.MatchString(text) {
 		interval := reInterval.FindStringSubmatch(text)
-		left, _ := strconv.Atoi(interval[1])
-		right, _ := strconv.Atoi(interval[2])
+		left, err := strconv.Atoi(interval[1])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		right, err := strconv.Atoi(interval[2])
+		if err != nil {
+			return nil, nil, err
+		}
 
 		for i := left + 1; i < right; i++ {
 			resFromReg = append(resFromReg, strconv.Itoa(i))
@@ -99,6 +106,7 @@ func (st *DataToParsingLine) parseLine(
 			if dep.Number != gr {
 				continue
 			}
+			
 			if !nextLine {
 				if dep.Lessons[subjectIndex].Name == "" {
 					dep.Lessons[subjectIndex] = subject
@@ -107,7 +115,7 @@ func (st *DataToParsingLine) parseLine(
 				}
 				var subjs = make([]common.Subject, 0, 1)
 				if strings.Contains(dep.Lessons[subjectIndex].Name, "#") {
-					subjs = dep.Lessons[subjectIndex].common.ParseSharp()
+					subjs = dep.Lessons[subjectIndex].ParseSharp()
 				} else {
 					subjs = append(subjs, dep.Lessons[subjectIndex])
 				}
@@ -120,7 +128,7 @@ func (st *DataToParsingLine) parseLine(
 					}
 				}
 				if isNewSubject {
-					newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+					newSubj := subject.GetNewStruct(dep.Lessons[subjectIndex], "#")
 					dep.Lessons[subjectIndex] = newSubj
 				}
 
@@ -129,7 +137,7 @@ func (st *DataToParsingLine) parseLine(
 			}
 
 			if !strings.Contains(dep.Lessons[subjectIndex].Name, "@") {
-				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "@")
+				newSubj := subject.GetNewStruct(dep.Lessons[subjectIndex], "@")
 				dep.Lessons[subjectIndex] = newSubj
 				insertedGroups = append(insertedGroups, gr)
 				continue
@@ -146,7 +154,7 @@ func (st *DataToParsingLine) parseLine(
 			*/
 
 			if subject.Name != regName || subject.Room != regRoom || subject.Lector != regLector {
-				newSubj := subject.getNewStruct(dep.Lessons[subjectIndex], "#")
+				newSubj := subject.GetNewStruct(dep.Lessons[subjectIndex], "#")
 				dep.Lessons[subjectIndex] = newSubj
 			}
 			insertedGroups = append(insertedGroups, gr)
@@ -154,7 +162,7 @@ func (st *DataToParsingLine) parseLine(
 	}
 
 	if countSmall0 > 0 || is2Weeks {
-		return departments, insertedGroups
+		return departments, insertedGroups, nil
 	}
 
 	var mapAllGr = make(map[string]string)
@@ -183,7 +191,7 @@ func (st *DataToParsingLine) parseLine(
 			}
 
 			if nextLine {
-				newSubj = newSubj.getNewStruct(dep.Lessons[subjectIndex], "@")
+				newSubj = newSubj.GetNewStruct(dep.Lessons[subjectIndex], "@")
 			}
 
 			dep.Lessons[subjectIndex] = newSubj
@@ -194,7 +202,7 @@ func (st *DataToParsingLine) parseLine(
 		insertedGroups = make([]string, 5)
 	}
 
-	return departments, insertedGroups
+	return departments, insertedGroups, nil
 }
 
 func putToDB(departments []Department, db *sql.DB) {
@@ -235,18 +243,10 @@ func fromStringToInt(class string) int {
 	num := common.ReNum.FindStringSubmatch(class)[1]
 	numberFromClass, err := strconv.Atoi(num)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(class, err)
 	}
 
 	return numberFromClass
-}
-
-func (st *common.Subject) getNewStruct(subject common.Subject, delimiter string) common.Subject {
-	return common.Subject{
-		Name:   subject.Name + delimiter + st.Name,
-		Lector: subject.Lector + delimiter + st.Lector,
-		Room:   subject.Room + delimiter + st.Room,
-	}
 }
 
 func parseGroups(text, room string) common.Subject {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fopSchedule/master/common"
+	"fopSchedule/common"
 	"regexp"
 	"time"
 )

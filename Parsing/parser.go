@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"fopSchedule/master/common"
+	"fopSchedule/common"
 	"html/template"
 	"io"
 	"log"
@@ -19,16 +19,6 @@ import (
 )
 
 func main() {
-	var courses = map[string][]string{
-		//		"5": []string{"1"},
-		"1": []string{"1", "2", "3"},
-		"2": []string{"1", "2", "3"},
-		"3": []string{"1", "2"},
-		"4": []string{"1", "2"},
-		"5": []string{"1", "2"},
-		"6": []string{"1", "2"},
-	}
-
 	db, err := sql.Open("mysql", DSN)
 	if err != nil {
 		log.Fatal(err)
@@ -38,7 +28,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for course, threads := range courses {
+	var mapCourseThread = map[string][]string{
+		//		"5": []string{"1"},
+		"1": []string{"1", "2", "3"},
+		"2": []string{"1", "2", "3"},
+		"3": []string{"1", "2"},
+		"4": []string{"1", "2"},
+		"5": []string{"1", "2"},
+		"6": []string{"1", "2"},
+	}
+
+	for course, threads := range mapCourseThread {
 		for _, thread := range threads {
 			res, err := http.Get("http://ras.phys.msu.ru/table/" + course + "/" + thread + ".html")
 			if err != nil {
@@ -47,15 +47,12 @@ func main() {
 			defer res.Body.Close()
 
 			if res.StatusCode != http.StatusOK {
-				log.Fatal("status code error: %v %v", res.StatusCode, res.Status)
+				log.Fatal("status code error: StatusCode: %v Status: %v", res.StatusCode, res.Status)
 			}
 
 			parse(course, db, res.Body)
 		}
 	}
-
-	var tablesNames = make([][]string, 6)
-	var tableName string
 
 	rowsTb, err := db.Query("SHOW TABLES")
 	if err != nil {
@@ -63,6 +60,8 @@ func main() {
 	}
 	defer rowsTb.Close()
 
+	var tablesNames = make([][]string, 6)
+	var tableName string
 	for rowsTb.Next() {
 		if err = rowsTb.Scan(&tableName); err != nil {
 			log.Fatal(err)
@@ -309,7 +308,8 @@ func parse(course string, db *sql.DB, r io.Reader) {
 			insertedGroups = make([]string, 5)
 		}
 
-		if countSmall0 > 0 && class != tdsmall+"0" {
+		if countSmall0 > 0 && class != tdsmall+"0" && class != tdtime {
+			log.Print(class)
 			numberBeforeSmall0 = fromStringToInt(class)
 			classBeforeSmall0 = class
 			return
@@ -318,7 +318,6 @@ func parse(course string, db *sql.DB, r io.Reader) {
 			classBeforeSmall0 = class
 		}
 
-		var allGr = make([]string, 0, 5)
 		var room string
 		std.Find("nobr").Each(func(i int, sel *goquery.Selection) {
 			room = sel.Text()
@@ -330,6 +329,7 @@ func parse(course string, db *sql.DB, r io.Reader) {
 			is2Weeks = false
 		}
 
+		var allGr = make([]string, 0, 5)
 		if strings.Contains(class, tditem) {
 			numberFromClass := fromStringToInt(class)
 			subject := parseGroups(text, room)
@@ -363,7 +363,10 @@ func parse(course string, db *sql.DB, r io.Reader) {
 				Lesson:           subject,
 				RegexpInterval:   reInterval,
 			}
-			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
+			departments, insertedGroups, err = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
+			if err != nil{
+				return
+			}
 			ind = ind + numberFromClass
 
 		} else if strings.Contains(class, tdsmall) {
@@ -450,7 +453,10 @@ func parse(course string, db *sql.DB, r io.Reader) {
 				Lesson:           subject,
 				RegexpInterval:   reInterval,
 			}
-			departments, insertedGroups = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
+			departments, insertedGroups, err = st.parseLine(subjectIndex, countSmall0-1, text, nextLine, is2Weeks, isFirstInSmall0)
+			if err != nil{
+				return
+			}
 			isFirstInSmall0 = false
 
 			//very strange part...
